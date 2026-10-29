@@ -1,6 +1,7 @@
 // Local development server: API on :8787, Vite proxies /api here.
 import { existsSync } from 'node:fs';
 import { serve } from '@hono/node-server';
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { createApp } from '../server/app';
 import { hashPassword } from '../server/auth';
 import { createNeonDb, type Db } from '../server/db';
@@ -25,6 +26,8 @@ const db: Db = process.env.DATABASE_URL
 const app = createApp({
   getDb: async () => db,
   getConfig: () => ({ passwordHash, sessionSecret, secureCookie: false }),
+  // Socket address (through the Vite proxy this is localhost — fine for local dev).
+  getClientIp: (c) => getConnInfo(c).remote.address ?? 'unknown',
 });
 
 serve({ fetch: app.fetch, port }, () => console.log(`[api] http://localhost:${port}`));

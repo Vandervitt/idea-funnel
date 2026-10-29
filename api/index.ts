@@ -12,6 +12,8 @@ const app = createApp({
     sessionSecret: process.env.SESSION_SECRET!,
     secureCookie: true,
   }),
+  // Set by Vercel's proxy to the real client address; a client-sent value is not passed through.
+  getClientIp: (c) => c.req.header('x-real-ip') ?? 'unknown',
 });
 
 const handler = handle(app);

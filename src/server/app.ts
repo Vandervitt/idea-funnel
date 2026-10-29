@@ -28,6 +28,11 @@ export interface AppDeps {
   /** Resolved per request so platform bindings (env) can be read lazily. */
   getDb(c: Context): Promise<Db>;
   getConfig(c: Context): AppConfig;
+  /**
+   * Client IP for login rate limiting. Each platform entry must read only the source its
+   * proxy guarantees (never a header the client can set), or the lockout can be bypassed.
+   */
+  getClientIp(c: Context): string;
 }
 
 // Single-user product: every row belongs to this owner. Kept as a column for a future multi-user version.
@@ -40,15 +45,6 @@ const validate = <T extends z.ZodType>(target: 'json' | 'query' | 'param', schem
   zValidator(target, schema, (result, c) => {
     if (!result.success) return c.json({ error: 'invalid_input', issues: result.error.issues }, 400);
   });
-
-function clientIp(c: Context): string {
-  return (
-    c.req.header('cf-connecting-ip') ??
-    c.req.header('x-real-ip') ??
-    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
-    'unknown'
-  );
-}
 
 const TRANSITION_MESSAGES = {
   score: '进入这个阶段前需要先打 ICE 分',
@@ -78,7 +74,7 @@ export function createApp(deps: AppDeps) {
     const db = await deps.getDb(c);
     const cfg = deps.getConfig(c);
     const limiter = createLoginLimiter(db);
-    const ip = clientIp(c);
+    const ip = deps.getClientIp(c);
     if (await limiter.isLocked(ip)) return c.json({ error: 'locked', message: '尝试次数过多，请 15 分钟后再试' }, 429);
 
     const { password, remember } = c.req.valid('json');

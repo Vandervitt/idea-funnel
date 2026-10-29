@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app';
-import { hashPassword, signSession, SESSION_COOKIE } from './auth';
+import { hashPassword, signSession, SESSION_COOKIE, MAX_GLOBAL_FAILURES } from './auth';
 import { createPgliteDb } from './pglite';
 import type { Idea, IdeaEvent, IdeaPage, BoardColumn } from '../shared/schema';
 
@@ -18,6 +18,7 @@ beforeAll(async () => {
   app = createApp({
     getDb: async () => db,
     getConfig: () => ({ passwordHash, sessionSecret: SECRET, secureCookie: true }),
+    getClientIp: (c) => c.req.header('x-real-ip') ?? 'unknown',
   });
   cookie = `${SESSION_COOKIE}=${await signSession(SECRET)}`;
 });
@@ -83,6 +84,26 @@ describe('auth', () => {
     // Another IP is unaffected.
     const other = await call('/api/auth/login', { auth: false, body: { password: PASSWORD }, headers: { 'x-real-ip': '2.2.2.2' } });
     expect(other.status).toBe(200);
+  });
+
+  it('cannot dodge the lockout by forging other IP headers', async () => {
+    // The entry decides which header is trustworthy (x-real-ip in this test app); others are attacker-controlled.
+    for (let i = 0; i < 5; i++) {
+      await call('/api/auth/login', {
+        auth: false,
+        body: { password: 'nope' },
+        headers: { 'cf-connecting-ip': `9.9.9.${i}`, 'x-forwarded-for': `8.8.8.${i}` },
+      });
+    }
+    expect((await call('/api/auth/login', { auth: false, body: { password: PASSWORD } })).status).toBe(429);
+  });
+
+  it('locks all logins after too many failures across IPs', async () => {
+    for (let i = 0; i < MAX_GLOBAL_FAILURES; i++) {
+      await call('/api/auth/login', { auth: false, body: { password: 'nope' }, headers: { 'x-real-ip': `10.0.${i >> 8}.${i & 255}` } });
+    }
+    const fresh = await call('/api/auth/login', { auth: false, body: { password: PASSWORD }, headers: { 'x-real-ip': '3.3.3.3' } });
+    expect(fresh.status).toBe(429);
   });
 
   it('blocks cross-site form posts', async () => {

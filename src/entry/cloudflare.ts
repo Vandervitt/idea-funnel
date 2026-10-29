@@ -16,6 +16,8 @@ const app = createApp({
     const env = c.env as Env;
     return { passwordHash: env.PASSWORD_HASH, sessionSecret: env.SESSION_SECRET, secureCookie: true };
   },
+  // Set by Cloudflare's edge on every request; a client-sent value is overwritten.
+  getClientIp: (c) => c.req.header('cf-connecting-ip') ?? 'unknown',
 });
 
 export default { fetch: app.fetch };
