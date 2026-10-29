@@ -6,7 +6,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/shared/` | 前后端共用：ICE 计算（`ice.ts`）、阶段状态机（`stage.ts`）、`#标签` 解析（`capture.ts`）、Zod 校验（`schema.ts`）、纯类型（`types.ts`） |
+| `src/shared/` | 前后端共用：ICE 计算（`ice.ts`）、阶段状态机（`stage.ts`）、`#标签` 与批量导入解析（`capture.ts`）、转化率（`insights.ts`）、Markdown 导出（`export.ts`）、Zod 校验（`schema.ts`）、纯类型（`types.ts`） |
 | `src/server/` | Hono API（`app.ts`）、SQL（`repo.ts`）、认证与限流（`auth.ts`）、数据库适配（`db.ts` = Neon，`pglite.ts` = 本地/测试） |
 | `src/entry/` | 平台入口：`node.ts`（本地开发）、`cloudflare.ts`（Workers） |
 | `api/index.ts` | Vercel Functions 入口 |
