@@ -11,7 +11,11 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "hash-password": "tsx scripts/hash-password.ts",
-    "verify:vercel": "rm -rf .data/vercel-check && tsc -p tsconfig.json --noEmit false --outDir .data/vercel-check && node scripts/verify-vercel-function.mjs .data/vercel-check"
+    "verify:vercel": "rm -rf .data/vercel-check && tsc -p tsconfig.json --noEmit false --outDir .data/vercel-check && node scripts/verify-vercel-function.mjs .data/vercel-check",
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "db:local": "node scripts/pg-local.mjs",
+    "db:migrate": "prisma migrate deploy",
+    "db:check": "prisma validate && prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code"
   },
   "type": "module",
   "dependencies": {
@@ -30,6 +34,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.13",
+    "@electric-sql/pglite-socket": "0.2.16",
     "@hono/node-server": "^2.1.5",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
@@ -38,6 +43,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
+    "prisma": "7.10.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
@@ -47,7 +53,9 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
-    "workerd@1.20261023.1": true
+    "workerd@1.20261023.1": true,
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true
   },
   "private": true
 }

@@ -11,7 +11,9 @@
 | `src/entry/` | 平台入口：`node.ts`（本地开发）、`cloudflare.ts`（Workers） |
 | `api/index.ts` | Vercel Functions 入口 |
 | `src/web/` | React SPA（Vite 根目录） |
-| `migrations/` | 手写 SQL，文件名带日期，内容幂等，**手动执行** |
+| `prisma/` | `schema.prisma` + `migrations/`：**仅用 Prisma Migrate 管理表结构**，业务查询仍是 `repo.ts` 里的 SQL |
+| `scripts/` | `vercel-build.mjs`（构建时迁移）、`pg-local.mjs`（本地 Postgres）、`verify-vercel-function.mjs`、`hash-password.ts` |
+| `.github/workflows/ci.yml` | PR / main 推送时跑全部检查 |
 | `e2e/` | Playwright 用例 |
 
 ## 核心约定
@@ -24,6 +26,15 @@
 - 前端只能以 `import type` 方式引用 `shared/schema.ts`，否则会把 zod 打进前端包；运行时常量放在 `shared/types.ts`。
 - 单用户：`owner_id` 固定为 `'me'`，字段保留，供以后扩展多用户。
 
+## 数据库迁移（本项目覆盖全局「手动 SQL 脚本」规则）
+
+用户于 2026-10-29 决定：本项目使用 **Prisma Migrate**，并在 CI/CD 中自动执行。
+
+- 改表：修改 `schema.prisma` → `npm run db:local`（另开终端）→ 设置 `DATABASE_URL` / `SHADOW_DATABASE_URL` 指向本地 → `npx prisma migrate dev --create-only --name <名称>` → **人工审阅生成的 SQL** 后再提交。
+- Prisma 表达不了的内容（`ice_x10` 生成列、CHECK 约束、pg_trgm 表达式索引、`NULLS LAST`）手写在迁移 SQL 里。`npm run db:check` 用来确认 schema 与迁移历史一致；CI 会强制执行这项检查。
+- 已提交的迁移不得修改，只能新增。
+- 执行时机：Vercel 构建时由 `scripts/vercel-build.mjs` 执行。生产环境迁移生产库；预览环境迁移各自的 Neon 分支；如果预览连到的是生产库（例如没开启预览分支），**构建会直接失败**。本地开发和测试使用 PGlite，按顺序执行迁移（记录在 `_local_migrations` 表中）。
+
 ## 命令
 
 | 命令 | 用途 |
@@ -35,4 +46,6 @@
 | `npm run verify:vercel` | 按 Vercel 的方式（逐文件编译 + Node ESM）加载函数，并请求一次 `/api/health` |
 | `npm run hash-password` | 生成 `PASSWORD_HASH` |
 
-**交付门槛**：`typecheck`、`test`、`build`、`verify:vercel`、`test:e2e` 全部通过。
+| `npm run db:local` / `db:check` / `db:migrate` | 本地 Postgres / schema 与迁移一致性检查 / 执行迁移 |
+
+**交付门槛**：`typecheck`、`test`、`build`、`verify:vercel`、`db:check`、`test:e2e` 全部通过（CI 中同样执行）。

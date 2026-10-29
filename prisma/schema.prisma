@@ -1,0 +1,76 @@
+// Migrations only (no Prisma Client). Things Prisma cannot express — the ice_x10 generated column,
+// CHECK constraints, the pg_trgm expression index and NULLS LAST ordering — live in the migration SQL.
+// After editing models: npm run db:local, then `prisma migrate dev --create-only` and review the SQL.
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model idea_events {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idea_id    String   @db.Uuid
+  type       String
+  from_stage String?
+  to_stage   String?
+  note       String   @default("")
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  ideas      ideas    @relation(fields: [idea_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([idea_id, created_at(sort: Desc)], map: "idea_events_idea_idx")
+}
+
+model idea_tags {
+  idea_id String @db.Uuid
+  tag_id  String @db.Uuid
+  ideas   ideas  @relation(fields: [idea_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags    tags   @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([idea_id, tag_id])
+  @@index([tag_id, idea_id], map: "idea_tags_tag_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model ideas {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_id         String
+  title            String
+  description      String        @default("")
+  stage            String        @default("inbox")
+  impact           Int?          @db.SmallInt
+  confidence       Int?          @db.SmallInt
+  ease             Int?          @db.SmallInt
+  ice_x10          Int?          @default(dbgenerated("((((impact + confidence) + ease) * 10) / 3)")) @db.SmallInt
+  source           String        @default("")
+  links            Json          @default("[]")
+  conclusion       String        @default("")
+  stage_changed_at DateTime      @default(now()) @db.Timestamptz(3)
+  created_at       DateTime      @default(now()) @db.Timestamptz(3)
+  updated_at       DateTime      @default(now()) @db.Timestamptz(3)
+  idea_events      idea_events[]
+  idea_tags        idea_tags[]
+
+  @@index([owner_id, created_at(sort: Desc), id(sort: Desc)], map: "ideas_owner_created_idx")
+  @@index([owner_id, ice_x10(sort: Desc), id(sort: Desc)], map: "ideas_owner_ice_idx")
+  @@index([owner_id, stage, updated_at(sort: Desc), id(sort: Desc)], map: "ideas_owner_stage_updated_idx")
+  @@index([owner_id, updated_at(sort: Desc), id(sort: Desc)], map: "ideas_owner_updated_idx")
+}
+
+model login_attempts {
+  ip           String    @id
+  failures     Int       @default(0)
+  locked_until DateTime? @db.Timestamptz(3)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tags {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_id  String
+  name      String
+  idea_tags idea_tags[]
+
+  @@unique([owner_id, name], map: "tags_owner_name_key")
+}

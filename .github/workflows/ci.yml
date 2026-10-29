@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shadow
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Create databases
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE app' -c 'CREATE DATABASE shadow'
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify:vercel
+      - name: Prisma schema matches migrations
+        run: npm run db:check
+      - name: Migrations apply cleanly to an empty database
+        run: npx prisma migrate deploy
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-results
+          path: .playwright/
+          retention-days: 7

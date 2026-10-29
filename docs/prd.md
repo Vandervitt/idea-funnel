@@ -203,11 +203,11 @@
 | UI | Tailwind CSS；拖拽用 dnd-kit | 视觉风格以原型为准 |
 | 校验 | Zod（前后端共用 schema） | |
 | 测试 | Vitest（单元测试 + 基于 PGlite 的接口集成测试）+ Playwright E2E | |
-| 部署 | `wrangler deploy` 或 `vercel deploy`，平台确定后再定 | 数据库迁移使用带日期的 SQL 脚本，内容幂等，手动执行 |
+| 部署 | Vercel（Git 集成自动部署）；保留 Cloudflare 入口 | 数据库迁移使用 Prisma Migrate，由 Vercel 构建时执行；GitHub Actions 负责 CI 检查 |
 
 ### 8.1 数据模型
 
-以 `migrations/20261029_init.sql` 为准，要点如下：
+以 `prisma/migrations` 为准（使用 Prisma Migrate 管理，Vercel 构建时自动执行；`schema.prisma` 表达不了的生成列、CHECK 约束、trigram 索引写在迁移 SQL 里），要点如下：
 
 - `ideas`：`ice_x10` 是生成列，等于 `(I + C + E) * 10 / 3`（整数除法，天然向下截断），用于排序和建索引；三个评分项通过 CHECK 约束保证要么全空、要么全有值。
 - `tags` / `idea_tags`：标签对每个用户唯一。
