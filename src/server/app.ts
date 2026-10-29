@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
+import { bodyLimit } from 'hono/body-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { Db } from './db.js';
@@ -15,7 +16,11 @@ import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
 } from './auth.js';
-import { createIdeaInput, listQuery, noteInput, stageInput, updateIdeaInput } from '../shared/schema.js';
+import {
+  createIdeaInput, exportQuery, importFile, importLinesInput, insightsQuery, listQuery, noteInput, stageInput, updateIdeaInput,
+  EXPORT_VERSION, type ExportFile, type ExportIdea,
+} from '../shared/schema.js';
+import { toMarkdown } from '../shared/export.js';
 
 export interface AppConfig {
   passwordHash: string;
@@ -124,6 +129,43 @@ export function createApp(deps: AppDeps) {
 
   app.get('/stats', async (c) => c.json(await (await repo(c)).stats(OWNER)));
   app.get('/tags', async (c) => c.json(await (await repo(c)).listTags(OWNER)));
+  app.get('/insights', validate('query', insightsQuery), async (c) =>
+    c.json(await (await repo(c)).insights(OWNER, c.req.valid('query').tz)),
+  );
+
+  app.get('/export', validate('query', exportQuery), async (c) => {
+    const { format } = c.req.valid('query');
+    const exportedAt = new Date().toISOString();
+    const ideas = await (await repo(c)).exportIdeas(OWNER);
+    const filename = `idea-funnel-${exportedAt.slice(0, 10).replaceAll('-', '')}.${format}`;
+    c.header('content-disposition', `attachment; filename="${filename}"`);
+    c.header('cache-control', 'no-store');
+    if (format === 'md') {
+      c.header('content-type', 'text/markdown; charset=utf-8');
+      return c.body(toMarkdown(ideas, exportedAt));
+    }
+    return c.json({ app: 'idea-funnel', version: EXPORT_VERSION, exportedAt, ideas } satisfies ExportFile);
+  });
+
+  // Vercel caps request bodies at 4.5 MB; reject earlier with a clear error.
+  const importLimit = bodyLimit({ maxSize: 4 * 1024 * 1024, onError: (c) => c.json({ error: 'too_large', message: '文件太大（上限 4 MB）' }, 413) });
+
+  app.post('/import/json', importLimit, validate('json', importFile), async (c) =>
+    c.json(await (await repo(c)).importIdeas(OWNER, c.req.valid('json').ideas)),
+  );
+
+  app.post('/import/lines', importLimit, validate('json', importLinesInput), async (c) => {
+    // Consecutive milliseconds keep the pasted order under "oldest first".
+    const start = Date.now();
+    const ideas = c.req.valid('json').items.map((item, i): ExportIdea => {
+      const at = new Date(start + i).toISOString();
+      return {
+        id: crypto.randomUUID(), title: item.title, description: '', stage: 'inbox', impact: null, confidence: null, ease: null,
+        source: '', links: [], conclusion: '', tags: item.tags, stageChangedAt: at, createdAt: at, updatedAt: at, events: [],
+      };
+    });
+    return c.json(await (await repo(c)).importIdeas(OWNER, ideas));
+  });
 
   app.post('/ideas', validate('json', createIdeaInput), async (c) =>
     c.json(await (await repo(c)).createIdea(OWNER, c.req.valid('json')), 201),

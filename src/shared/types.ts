@@ -47,3 +47,29 @@ export interface Stats {
 }
 
 export const BACKLOG_DAYS = 14;
+
+export interface Insights {
+  stages: { stage: Stage; count: number }[];
+  funnel: { stage: Stage; reached: number; rate: string | null }[];
+  /** Oldest first; `week` is the Monday (YYYY-MM-DD) in the requested time zone. */
+  weeks: { week: string; created: number; processed: number }[];
+}
+
+/** One idea in an export file: everything needed to restore it, minus derived fields (ice_x10). */
+export interface ExportIdea extends Omit<Idea, 'iceX10'> {
+  events: IdeaEvent[];
+}
+
+export const EXPORT_VERSION = 1;
+
+export interface ExportFile {
+  app: 'idea-funnel';
+  version: typeof EXPORT_VERSION;
+  exportedAt: string;
+  ideas: ExportIdea[];
+}
+
+export interface ImportResult {
+  inserted: number;
+  skipped: number;
+}

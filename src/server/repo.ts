@@ -1,7 +1,10 @@
 import type { Db, Statement } from './db.js';
-import type { CreateIdeaInput, Idea, IdeaEvent, IdeaPage, ListQuery, BoardColumn, Stats, UpdateIdeaInput } from '../shared/schema.js';
+import type {
+  CreateIdeaInput, ExportIdea, Idea, IdeaEvent, IdeaPage, ImportResult, Insights, ListQuery, BoardColumn, Stats, UpdateIdeaInput,
+} from '../shared/schema.js';
 import { BACKLOG_DAYS } from '../shared/schema.js';
 import { STAGES, CLOSED_STAGES, checkTransition, type Stage, type TransitionNeed } from '../shared/stage.js';
+import { FUNNEL_PATH, funnelSteps, type FunnelStage } from '../shared/insights.js';
 
 const BOARD_COLUMN_LIMIT = 50;
 
@@ -269,6 +272,128 @@ export function createRepo(db: Db) {
         [owner, BACKLOG_DAYS],
       );
       return r;
+    },
+
+    async insights(owner: string, tz: string): Promise<Insights> {
+      const [stageRows, furthestRows, weeks] = await Promise.all([
+        db.query<{ stage: Stage; count: number }>(
+          `SELECT stage, count(*)::int AS count FROM ideas WHERE owner_id = $1 GROUP BY stage`,
+          [owner],
+        ),
+        // Furthest step on the main path each idea ever reached: its current stage or any stage it moved to.
+        db.query<{ stage: FunnelStage; count: number }>(
+          `SELECT ($2::text[])[pos] AS stage, count(*)::int AS count FROM (
+             SELECT GREATEST(1, COALESCE(array_position($2::text[], i.stage), 0),
+                               COALESCE(max(array_position($2::text[], e.to_stage)), 0)) AS pos
+             FROM ideas i LEFT JOIN idea_events e ON e.idea_id = i.id AND e.type = 'stage'
+             WHERE i.owner_id = $1 GROUP BY i.id
+           ) f GROUP BY pos`,
+          [owner, FUNNEL_PATH],
+        ),
+        // Weeks start on Monday in the viewer's time zone. "Processed" = left the inbox (advanced or dropped).
+        db.query<Insights['weeks'][number]>(
+          `WITH weeks AS (
+             SELECT generate_series(date_trunc('week', now() AT TIME ZONE $2) - interval '11 weeks',
+                                    date_trunc('week', now() AT TIME ZONE $2), interval '1 week') AS wk
+           ),
+           since AS (SELECT min(wk) AT TIME ZONE $2 AS t FROM weeks),
+           created AS (
+             SELECT date_trunc('week', created_at AT TIME ZONE $2) AS wk, count(*)::int AS n
+             FROM ideas WHERE owner_id = $1 AND created_at >= (SELECT t FROM since) GROUP BY 1
+           ),
+           processed AS (
+             SELECT date_trunc('week', e.created_at AT TIME ZONE $2) AS wk, count(DISTINCT e.idea_id)::int AS n
+             FROM idea_events e JOIN ideas i ON i.id = e.idea_id
+             WHERE e.type = 'stage' AND e.from_stage = 'inbox' AND e.created_at >= (SELECT t FROM since) AND i.owner_id = $1
+             GROUP BY 1
+           )
+           SELECT to_char(w.wk, 'YYYY-MM-DD') AS week, COALESCE(c.n, 0) AS created, COALESCE(p.n, 0) AS processed
+           FROM weeks w LEFT JOIN created c ON c.wk = w.wk LEFT JOIN processed p ON p.wk = w.wk
+           ORDER BY w.wk`,
+          [owner, tz],
+        ),
+      ]);
+      const counts = new Map(stageRows.map((r) => [r.stage, r.count]));
+      return {
+        stages: STAGES.map((stage) => ({ stage, count: counts.get(stage) ?? 0 })),
+        funnel: funnelSteps(Object.fromEntries(furthestRows.map((r) => [r.stage, r.count]))),
+        weeks,
+      };
+    },
+
+    async exportIdeas(owner: string): Promise<ExportIdea[]> {
+      const rows = await db.query(
+        `SELECT ${IDEA_COLUMNS},
+           COALESCE((SELECT json_agg(json_build_object('id', e.id, 'type', e.type, 'fromStage', e.from_stage,
+                                       'toStage', e.to_stage, 'note', e.note, 'createdAt', e.created_at)
+                                     ORDER BY e.created_at, e.id)
+                     FROM idea_events e WHERE e.idea_id = i.id), '[]') AS events
+         FROM ideas i WHERE i.owner_id = $1 ORDER BY i.created_at, i.id`,
+        [owner],
+      );
+      return rows.map((r) => {
+        const { iceX10: _derived, ...idea } = toIdea(r);
+        const events = (r.events as Row[]).map((e) => ({ ...(e as unknown as IdeaEvent), createdAt: iso(e.createdAt) }));
+        return { ...idea, events };
+      });
+    },
+
+    /**
+     * Inserts ideas (with their tags and timeline) in one statement. Ideas whose id already
+     * exists are skipped as a whole, so importing the same file twice changes nothing.
+     */
+    async importIdeas(owner: string, ideas: ExportIdea[]): Promise<ImportResult> {
+      if (!ideas.length) return { inserted: 0, skipped: 0 };
+      const rows = ideas.map(({ events: _e, tags: _t, ...idea }) => idea);
+      const tags = ideas.flatMap((i) => [...new Set(i.tags)].map((name) => ({ ideaId: i.id, name })));
+      const events = ideas.flatMap((i) =>
+        (i.events.length
+          ? i.events
+          : [{ id: crypto.randomUUID(), type: 'created' as const, fromStage: null, toStage: 'inbox' as const, note: '', createdAt: i.createdAt }]
+        ).map((e) => ({ ...e, ideaId: i.id })),
+      );
+      const [r] = await db.query<{ inserted: number }>(
+        `WITH ins AS (
+           INSERT INTO ideas (id, owner_id, title, description, stage, impact, confidence, ease, source, links, conclusion,
+                              stage_changed_at, created_at, updated_at)
+           SELECT x.id, $1, x.title, x.description, x.stage, x.impact, x.confidence, x.ease, x.source, x.links, x.conclusion,
+                  x."stageChangedAt", x."createdAt", x."updatedAt"
+           FROM jsonb_to_recordset($2::jsonb) AS x(id uuid, title text, description text, stage text, impact smallint,
+                confidence smallint, ease smallint, source text, links jsonb, conclusion text,
+                "stageChangedAt" timestamptz, "createdAt" timestamptz, "updatedAt" timestamptz)
+           ON CONFLICT (id) DO NOTHING
+           RETURNING id
+         ),
+         tag_in AS (
+           SELECT x."ideaId" AS idea_id, x.name FROM jsonb_to_recordset($3::jsonb) AS x("ideaId" uuid, name text)
+           WHERE x."ideaId" IN (SELECT id FROM ins)
+         ),
+         new_tags AS (
+           INSERT INTO tags (owner_id, name) SELECT DISTINCT $1, name FROM tag_in
+           ON CONFLICT (owner_id, name) DO NOTHING RETURNING id, name
+         ),
+         -- Existing tags come from the statement's snapshot; the ones created above only from RETURNING.
+         all_tags AS (
+           SELECT id, name FROM new_tags
+           UNION ALL SELECT t.id, t.name FROM tags t WHERE t.owner_id = $1 AND t.name IN (SELECT name FROM tag_in)
+         ),
+         linked AS (
+           INSERT INTO idea_tags (idea_id, tag_id)
+           SELECT ti.idea_id, at.id FROM tag_in ti JOIN all_tags at ON at.name = ti.name
+           ON CONFLICT DO NOTHING
+         ),
+         timeline AS (
+           INSERT INTO idea_events (id, idea_id, type, from_stage, to_stage, note, created_at)
+           SELECT x.id, x."ideaId", x.type, x."fromStage", x."toStage", x.note, x."createdAt"
+           FROM jsonb_to_recordset($4::jsonb) AS x(id uuid, "ideaId" uuid, type text, "fromStage" text, "toStage" text,
+                note text, "createdAt" timestamptz)
+           WHERE x."ideaId" IN (SELECT id FROM ins)
+           ON CONFLICT (id) DO NOTHING
+         )
+         SELECT count(*)::int AS inserted FROM ins`,
+        [owner, JSON.stringify(rows), JSON.stringify(tags), JSON.stringify(events)],
+      );
+      return { inserted: r.inserted, skipped: ideas.length - r.inserted };
     },
 
     async listTags(owner: string): Promise<{ name: string; count: number }[]> {
