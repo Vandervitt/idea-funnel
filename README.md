@@ -27,12 +27,13 @@ npm run dev          # http://localhost:5173 ，默认密码 idea-funnel
 
 **首次配置（只需一次）**
 
-1. 在 Vercel 中添加 Neon 集成，并开启 **Create database branch for deployment → Preview**（预览分支）。
-2. 环境变量：`DATABASE_URL` / `DATABASE_URL_UNPOOLED` 由集成自动注入；需要手动添加的有：
+1. Vercel 项目 → Settings → Git 连接 GitHub 仓库 `Vandervitt/idea-funnel`。如果列表里没有这个仓库，先到 GitHub → Settings → Applications → Vercel → Configure，在 Repository access 中授权它。注意：从 Vercel 导入时自动创建的 `idea-funnel-vitt` 是另一个仓库，不要连它。
+2. 在 Vercel 中添加 Neon 集成，并开启 **Create database branch for deployment → Preview**（预览分支）。
+3. 环境变量：`DATABASE_URL` / `DATABASE_URL_UNPOOLED` 由集成自动注入；需要手动添加的有：
    - `SESSION_SECRET`：`openssl rand -base64 48`
    - `PASSWORD_HASH`：`npm run hash-password`
    - `PRODUCTION_NEON_ENDPOINT`：生产库的 endpoint id（`ep-xxx`），用于判断预览是否误连生产库
-3. 如果生产库里已经有表、但没有 Prisma 迁移记录，先执行一次基线标记：`npx prisma migrate resolve --applied 20261029000000_init`
+4. 如果生产库里已经有表、但没有 Prisma 迁移记录，先执行一次基线标记：`npx prisma migrate resolve --applied 20261029000000_init`
 
 **CI**：`.github/workflows/ci.yml` 只做检查，不负责部署；在 PR 和 `main` / `preview` 推送时执行类型检查、单元/集成测试、构建、Vercel 函数加载检查、Prisma 一致性检查（真实 Postgres）和 E2E。
 
