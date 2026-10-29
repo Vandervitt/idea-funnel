@@ -11,6 +11,7 @@ import { TagFilter, useFilterParams } from '../components/Filters';
 const SORT_LABELS: Record<Sort, string> = {
   ice: 'ICE 分 · 从高到低',
   updated: '最近更新',
+  updated_asc: '最久没更新',
   created: '创建时间 · 最新',
   created_asc: '创建时间 · 最早',
 };

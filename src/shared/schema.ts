@@ -9,6 +9,9 @@ const score = z.number().int().min(1).max(10);
 const tagName = z.string().trim().min(1).max(32).regex(/^[^\s#＃]+$/, '标签不能包含空格或 #');
 
 export const iceInput = z.object({ impact: score, confidence: score, ease: score });
+const planText = z.string().trim().max(2000);
+export const planInput = z.object({ hypothesis: planText, successCriteria: planText });
+export { tagName };
 
 export const createIdeaInput = z.object({
   title: z.string().trim().min(1).max(200),
@@ -26,6 +29,8 @@ export const updateIdeaInput = z
     links: z.array(z.url({ protocol: /^https?$/ }).max(2000)).max(20),
     // null clears the score; changing the score of an idea that requires one is checked server side.
     ice: iceInput.nullable(),
+    hypothesis: planText,
+    successCriteria: planText,
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, '没有要更新的字段');
@@ -34,6 +39,7 @@ export const stageInput = z.object({
   to: z.enum(STAGES),
   ice: iceInput.optional(),
   conclusion: z.string().trim().max(2000).optional(),
+  plan: planInput.optional(),
 });
 
 export const noteInput = z.object({ note: z.string().trim().min(1).max(2000) });
@@ -75,7 +81,7 @@ const isoTime = z.iso.datetime({ offset: true });
 
 const exportEvent = z.object({
   id: z.uuid(),
-  type: z.enum(['created', 'stage', 'note']),
+  type: z.enum(['created', 'stage', 'note', 'score']),
   fromStage: z.enum(STAGES).nullable(),
   toStage: z.enum(STAGES).nullable(),
   note: z.string().max(2000),
@@ -95,6 +101,9 @@ const exportIdea = z
     source: z.string().trim().max(200),
     links: z.array(z.url({ protocol: /^https?$/ }).max(2000)).max(20),
     conclusion: z.string().max(2000),
+    // Absent in files exported before the validation plan existed.
+    hypothesis: z.string().max(2000).default(''),
+    successCriteria: z.string().max(2000).default(''),
     tags: z.array(tagName).max(20),
     stageChangedAt: isoTime,
     createdAt: isoTime,
@@ -104,6 +113,7 @@ const exportIdea = z
   .superRefine((idea, ctx) => {
     const scores = [idea.impact, idea.confidence, idea.ease].filter((v) => v != null).length;
     if (scores !== 0 && scores !== 3) ctx.addIssue({ code: 'custom', message: 'ICE 的三项要么都填，要么都不填', path: ['impact'] });
+    // Shipped is not checked: ideas shipped before scores were required must still import as they were exported.
     if ((idea.stage === 'validating' || idea.stage === 'building') && scores === 0) {
       ctx.addIssue({ code: 'custom', message: '验证中 / 执行中的想法必须已评分', path: ['impact'] });
     }
@@ -127,6 +137,8 @@ export const importLinesInput = z.object({
     .min(1)
     .max(BATCH_LIMIT),
 });
+
+export const renameTagInput = z.object({ name: tagName });
 
 export type CreateIdeaInput = z.infer<typeof createIdeaInput>;
 export type UpdateIdeaInput = z.infer<typeof updateIdeaInput>;

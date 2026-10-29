@@ -17,7 +17,8 @@ import {
   SESSION_TTL_SECONDS,
 } from './auth.js';
 import {
-  createIdeaInput, exportQuery, importFile, importLinesInput, insightsQuery, listQuery, noteInput, stageInput, updateIdeaInput,
+  createIdeaInput, exportQuery, importFile, importLinesInput, insightsQuery, listQuery, noteInput, renameTagInput, stageInput, tagName,
+  updateIdeaInput,
   EXPORT_VERSION, type ExportFile, type ExportIdea,
 } from '../shared/schema.js';
 import { toMarkdown } from '../shared/export.js';
@@ -129,6 +130,15 @@ export function createApp(deps: AppDeps) {
 
   app.get('/stats', async (c) => c.json(await (await repo(c)).stats(OWNER)));
   app.get('/tags', async (c) => c.json(await (await repo(c)).listTags(OWNER)));
+  const tagParam = z.object({ name: tagName });
+  app.patch('/tags/:name', validate('param', tagParam), validate('json', renameTagInput), async (c) =>
+    (await (await repo(c)).renameTag(OWNER, c.req.valid('param').name, c.req.valid('json').name))
+      ? c.json({ ok: true })
+      : c.json({ error: 'not_found' }, 404),
+  );
+  app.delete('/tags/:name', validate('param', tagParam), async (c) =>
+    (await (await repo(c)).deleteTag(OWNER, c.req.valid('param').name)) ? c.body(null, 204) : c.json({ error: 'not_found' }, 404),
+  );
   app.get('/insights', validate('query', insightsQuery), async (c) =>
     c.json(await (await repo(c)).insights(OWNER, c.req.valid('query').tz)),
   );
@@ -161,7 +171,7 @@ export function createApp(deps: AppDeps) {
       const at = new Date(start + i).toISOString();
       return {
         id: crypto.randomUUID(), title: item.title, description: '', stage: 'inbox', impact: null, confidence: null, ease: null,
-        source: '', links: [], conclusion: '', tags: item.tags, stageChangedAt: at, createdAt: at, updatedAt: at, events: [],
+        source: '', links: [], conclusion: '', hypothesis: '', successCriteria: '', tags: item.tags, stageChangedAt: at, createdAt: at, updatedAt: at, events: [],
       };
     });
     return c.json(await (await repo(c)).importIdeas(OWNER, ideas));

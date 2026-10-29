@@ -2,7 +2,8 @@ import { Link } from 'react-router';
 import { useInsights } from '../api';
 import { STAGE_LABELS } from '../../shared/stage';
 import type { Insights } from '../../shared/types';
-import { STAGE_DOT } from '../components/ui';
+import { Icon, STAGE_DOT } from '../components/ui';
+import { STALL_DAYS } from '../../shared/types';
 
 const card = 'flex flex-col gap-4 p-5 rounded-xl bg-surface border border-line';
 
@@ -19,14 +20,49 @@ export function InsightsPage() {
         <p className="text-muted">还没有想法。记下几条之后，这里会显示漏斗和每周趋势。</p>
       ) : (
         <>
+          <Metrics metrics={data.metrics} />
           <div className="grid gap-5 lg:grid-cols-2">
             <StageCounts stages={data.stages} />
-            <Funnel funnel={data.funnel} />
+            <Funnel funnel={data.funnel} skipped={data.skipped} />
           </div>
           <Weekly weeks={data.weeks} />
         </>
       )}
     </div>
+  );
+}
+
+const BACKLOG_TARGET = 10;
+
+/** The PRD's success metrics, each with its target and whether it is met (icon + words, never color alone). */
+function Metrics({ metrics }: { metrics: Insights['metrics'] }) {
+  const full = (rate: string | null) => rate == null || rate === '100.0%';
+  const tiles = [
+    { label: '超期积压', value: `${metrics.backlog} 条`, target: `收集箱里超过 14 天的想法 ≤ ${BACKLOG_TARGET} 条`, ok: metrics.backlog <= BACKLOG_TARGET },
+    {
+      label: '中段停滞', value: `${metrics.stalled} 条`,
+      target: `评估中、验证中超过 ${STALL_DAYS.evaluating} 天，执行中超过 ${STALL_DAYS.building} 天没有进展`, ok: metrics.stalled === 0,
+    },
+    { label: '评分覆盖率', value: metrics.scoredRate ?? '—', target: '验证中、执行中、已落地的想法 100% 有评分', ok: full(metrics.scoredRate) },
+    { label: '结论覆盖率', value: metrics.concludedRate ?? '—', target: '已落地、已放弃的想法 100% 有结论', ok: full(metrics.concludedRate) },
+  ];
+  return (
+    <section aria-labelledby="metrics-title" className="flex flex-col gap-3">
+      <h2 id="metrics-title" className="sr-only">成功指标</h2>
+      <ul className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {tiles.map((t) => (
+          <li key={t.label} className="flex flex-col gap-1.5 p-4 rounded-xl bg-surface border border-line" aria-label={`${t.label} ${t.value}，${t.ok ? '达标' : '需要关注'}`}>
+            <span className="text-[13px] text-ink-2">{t.label}</span>
+            <span className="text-2xl font-semibold" data-testid={`metric-${t.label}`}>{t.value}</span>
+            <span className={`inline-flex items-center gap-1 self-start px-2 rounded-md text-xs font-medium leading-5 ${t.ok ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn-ink'}`}>
+              <Icon name={t.ok ? 'check' : 'clock'} size={12} />
+              {t.ok ? '达标' : '需要关注'}
+            </span>
+            <span className="text-xs text-muted leading-relaxed">{t.target}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -59,13 +95,18 @@ function StageCounts({ stages }: { stages: Insights['stages'] }) {
   );
 }
 
-function Funnel({ funnel }: { funnel: Insights['funnel'] }) {
+function Funnel({ funnel, skipped }: { funnel: Insights['funnel']; skipped: number }) {
   const top = Math.max(1, funnel[0]?.reached ?? 0);
   return (
     <section aria-labelledby="funnel-title" className={card}>
       <div>
         <h2 id="funnel-title" className="font-bold">阶段转化</h2>
         <p className="text-[13px] text-muted">曾经到达每个阶段的想法数；已放弃的按放弃前走到的最远阶段计</p>
+        {skipped > 0 && (
+          <p className="mt-1 text-[13px] text-ink-2" data-testid="funnel-skipped">
+            其中 {skipped} 条曾跳过中间阶段直接前进，跳过的阶段也按「到达」计入，相应的转化率会偏高。
+          </p>
+        )}
       </div>
       <ol className="flex flex-col">
         {funnel.map((s, i) => (

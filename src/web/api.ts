@@ -26,6 +26,20 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
+/** Downloads an export through fetch, so an expired session leads to the login page instead of a saved error file. */
+export async function downloadExport(format: 'json' | 'md') {
+  const res = await fetch(`/api/export?format=${format}`, { credentials: 'same-origin' });
+  if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => ({})));
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? `idea-funnel.${format}`;
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 10_000, retry: (n, err) => !(err instanceof ApiError && err.status < 500) && n < 2 },
@@ -175,6 +189,32 @@ export function useDeleteNote(id: string) {
   return useMutation({
     mutationFn: (eventId: string) => api<void>(`/ideas/${id}/events/${eventId}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events', id] }),
+  });
+}
+
+export function useRenameTag() {
+  const invalidate = useInvalidateIdeas();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) =>
+      api(`/tags/${encodeURIComponent(from)}`, { method: 'PATCH', body: { name: to } }),
+    // Every idea carrying the tag changes.
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['idea'] });
+    },
+  });
+}
+
+export function useDeleteTag() {
+  const invalidate = useInvalidateIdeas();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api<void>(`/tags/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['idea'] });
+    },
   });
 }
 

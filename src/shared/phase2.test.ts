@@ -61,6 +61,8 @@ describe('markdown export', () => {
     source: '',
     links: [],
     conclusion: '',
+    hypothesis: '',
+    successCriteria: '',
     tags: [],
     stageChangedAt: '2026-10-01T00:00:00.000Z',
     createdAt: '2026-10-01T00:00:00.000Z',
@@ -85,5 +87,12 @@ describe('markdown export', () => {
     expect(md).toContain('**重点**');
     expect(md).toContain('- 结论：有成熟竞品');
     expect(md).toContain('共 3 条');
+    expect(md).not.toContain('验证假设');
+  });
+
+  it('includes the validation plan when there is one', () => {
+    const md = toMarkdown([{ ...base, stage: 'evaluating', hypothesis: '有人愿意付费', successCriteria: '5 人预付' }], '2026-10-29T08:00:00.000Z');
+    expect(md).toContain('- 验证假设：有人愿意付费');
+    expect(md).toContain('- 成功标准：5 人预付');
   });
 });

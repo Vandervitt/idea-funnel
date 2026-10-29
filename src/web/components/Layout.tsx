@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useSearchParams } from 'react-router';
 import { useCreateIdea, useStats } from '../api';
 import { parseCapture } from '../../shared/capture';
 import { Icon, Kbd, TagChip, btn, useToast } from './ui';
@@ -65,6 +65,7 @@ function CaptureBar() {
   const ref = useRef<HTMLInputElement>(null);
   const create = useCreateIdea();
   const toast = useToast();
+  const [, setParams] = useSearchParams();
   const parsed = parseCapture(text);
 
   useEffect(() => {
@@ -88,9 +89,15 @@ function CaptureBar() {
       return;
     }
     try {
-      await create.mutateAsync(parsed);
+      const idea = await create.mutateAsync(parsed);
       setText('');
-      toast('已记到收集箱');
+      toast('已记到收集箱', 'ok', {
+        label: '打开',
+        onClick: () => setParams((p) => {
+          p.set('idea', idea.id);
+          return p;
+        }),
+      });
     } catch {
       toast('保存失败，请重试', 'error');
     }

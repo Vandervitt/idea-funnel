@@ -148,7 +148,7 @@ describe('ideas CRUD', () => {
     expect(updated.links).toEqual(['https://example.com']);
     expect(updated.iceX10).toBe(76);
     const tags = await (await call('/api/tags')).json();
-    expect(tags).toEqual(expect.arrayContaining([{ name: 'x', count: 0 }, { name: 'y', count: 1 }]));
+    expect(tags).toEqual([{ name: 'y', count: 1 }, { name: 'z', count: 1 }]);
   });
 
   it('returns 404 for unknown ideas and deletes with cascade', async () => {
@@ -175,6 +175,16 @@ describe('stage transitions', () => {
   it('refuses to clear the score of an idea that needs one', async () => {
     const idea = await create('a');
     await call(`/api/ideas/${idea.id}/stage`, { body: { to: 'building', ...ice(5, 5, 5) } });
+    expect((await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { ice: null } })).status).toBe(409);
+  });
+
+  it('requires a score to ship and keeps it once shipped', async () => {
+    const idea = await create('a');
+    const blocked = await call(`/api/ideas/${idea.id}/stage`, { body: { to: 'shipped', conclusion: '上线了' } });
+    expect(blocked.status).toBe(409);
+    expect((await blocked.json()).need).toBe('score');
+    const shipped: Idea = await (await call(`/api/ideas/${idea.id}/stage`, { body: { to: 'shipped', conclusion: '上线了', ...ice(6, 6, 6) } })).json();
+    expect(shipped).toMatchObject({ stage: 'shipped', iceX10: 60 });
     expect((await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { ice: null } })).status).toBe(409);
   });
 
@@ -236,7 +246,11 @@ describe('listing', () => {
   });
 
   it('paginates by creation time in both directions', async () => {
-    for (let i = 0; i < 5; i++) await create(`n${i}`);
+    for (let i = 0; i < 5; i++) {
+      const idea = await create(`n${i}`);
+      // Explicit times: ideas created within the same millisecond would otherwise tie.
+      await db.query(`UPDATE ideas SET created_at = now() - make_interval(secs => $2) WHERE id = $1`, [idea.id, 10 - i]);
+    }
     const walk = async (sort: string) => {
       const out: string[] = [];
       let cursor: string | null = null;
@@ -265,7 +279,7 @@ describe('listing', () => {
     const old = await create('old');
     await create('new');
     await db.query(`UPDATE ideas SET created_at = now() - interval '15 days' WHERE id = $1`, [old.id]);
-    expect(await (await call('/api/stats')).json()).toEqual({ inbox: 2, backlog: 1 });
+    expect(await (await call('/api/stats')).json()).toMatchObject({ inbox: 2, backlog: 1 });
   });
 
   it('uses indexes for the list queries', async () => {
@@ -293,6 +307,120 @@ describe('timeline notes', () => {
     const [created] = (await (await call(`/api/ideas/${idea.id}/events`)).json() as IdeaEvent[]).filter((e) => e.type === 'created');
     expect((await call(`/api/ideas/${idea.id}/events/${created.id}`, { method: 'DELETE' })).status).toBe(404);
     expect((await call(`/api/ideas/${idea.id}/events/${note.id}`, { method: 'DELETE' })).status).toBe(204);
+  });
+});
+
+describe('score history', () => {
+  const scoreEvents = async (id: string) =>
+    ((await (await call(`/api/ideas/${id}/events`)).json()) as IdeaEvent[]).filter((e) => e.type === 'score').map((e) => e.note);
+
+  it('records score changes, merging quick successive edits into one entry', async () => {
+    const idea = await create('a');
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: ice(7, 8, 8) });
+    expect(await scoreEvents(idea.id)).toEqual(['7.6（I 7 / C 8 / E 8）']);
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: ice(9, 8, 8) });
+    expect(await scoreEvents(idea.id)).toEqual(['8.3（I 9 / C 8 / E 8）']);
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: ice(9, 8, 8) }); // unchanged: nothing to record
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { title: 'b' } });
+    expect(await scoreEvents(idea.id)).toEqual(['8.3（I 9 / C 8 / E 8）']);
+
+    await db.query(`UPDATE idea_events SET created_at = now() - interval '11 minutes' WHERE type = 'score'`);
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { ice: null } });
+    expect(await scoreEvents(idea.id)).toEqual(['清除评分', '8.3（I 9 / C 8 / E 8）']);
+  });
+
+  it('does not merge across another timeline entry', async () => {
+    const idea = await create('a');
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: ice(5, 5, 5) });
+    await call(`/api/ideas/${idea.id}/events`, { body: { note: '访谈后信心变高' } });
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: ice(5, 9, 5) });
+    expect(await scoreEvents(idea.id)).toEqual(['6.3（I 5 / C 9 / E 5）', '5.0（I 5 / C 5 / E 5）']);
+  });
+
+  it('records the score given together with a stage move', async () => {
+    const idea = await create('a');
+    await call(`/api/ideas/${idea.id}/stage`, { body: { to: 'validating', ...ice(9, 5, 3) } });
+    const events: IdeaEvent[] = await (await call(`/api/ideas/${idea.id}/events`)).json();
+    expect(events.map((e) => e.type).sort()).toEqual(['created', 'score', 'stage']);
+    expect(events.find((e) => e.type === 'score')?.note).toBe('5.6（I 9 / C 5 / E 3）');
+  });
+});
+
+describe('validation plan', () => {
+  it('is edited directly or given when moving into validating', async () => {
+    const idea = await create('a');
+    expect(idea).toMatchObject({ hypothesis: '', successCriteria: '' });
+    const patched: Idea = await (await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { hypothesis: '有人愿意付费' } })).json();
+    expect(patched.hypothesis).toBe('有人愿意付费');
+
+    const b = await create('b');
+    const moved: Idea = await (await call(`/api/ideas/${b.id}/stage`, {
+      body: { to: 'validating', ...ice(5, 5, 5), plan: { hypothesis: '每周至少用 3 次', successCriteria: '10 人里 5 人留存' } },
+    })).json();
+    expect(moved).toMatchObject({ stage: 'validating', hypothesis: '每周至少用 3 次', successCriteria: '10 人里 5 人留存' });
+    expect((await call(`/api/ideas/${b.id}`, { method: 'PATCH', body: { hypothesis: 'x'.repeat(2001) } })).status).toBe(400);
+  });
+});
+
+describe('stalled ideas', () => {
+  it('counts mid-funnel ideas without activity past each stage threshold; a note counts as activity', async () => {
+    const a = await create('a');
+    await move(a.id, 'evaluating');
+    const b = await create('b');
+    await move(b.id, 'building', ice(5, 5, 5));
+    const c = await create('c');
+    await move(c.id, 'building', ice(5, 5, 5));
+    await db.query(`UPDATE ideas SET updated_at = now() - interval '31 days'`);
+    // building allows 60 days: b and c are not stalled yet; a (evaluating, 30 days) is.
+    expect((await (await call('/api/stats')).json()).stalled).toEqual({ evaluating: 1, validating: 0, building: 0 });
+    await db.query(`UPDATE ideas SET updated_at = now() - interval '61 days' WHERE id = ANY($1::uuid[])`, [[b.id, c.id]]);
+    await call(`/api/ideas/${c.id}/events`, { body: { note: '还在做' } });
+    expect((await (await call('/api/stats')).json()).stalled).toEqual({ evaluating: 1, validating: 0, building: 1 });
+  });
+
+  it('lists least recently updated first', async () => {
+    for (let i = 0; i < 3; i++) {
+      const idea = await create(`n${i}`);
+      await db.query(`UPDATE ideas SET updated_at = now() - make_interval(secs => $2) WHERE id = $1`, [idea.id, 10 - i]);
+    }
+    const out: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: IdeaPage = await (await call(`/api/ideas?sort=updated_asc&limit=2${cursor ? `&cursor=${cursor}` : ''}`)).json();
+      out.push(...page.items.map((i) => i.title));
+      cursor = page.nextCursor;
+    } while (cursor);
+    expect(out).toEqual(['n0', 'n1', 'n2']);
+  });
+});
+
+describe('tag management', () => {
+  const tags = async () => (await (await call('/api/tags')).json()) as { name: string; count: number }[];
+
+  it('hides tags no idea uses any more', async () => {
+    const idea = await create('a', ['旧', '新']);
+    await call(`/api/ideas/${idea.id}`, { method: 'PATCH', body: { tags: ['新'] } });
+    expect(await tags()).toEqual([{ name: '新', count: 1 }]);
+  });
+
+  it('renames, merges into an existing tag and deletes', async () => {
+    const a = await create('a', ['AI', '人工智能']);
+    const b = await create('b', ['人工智能']);
+    await create('c', ['工具']);
+    expect((await call(`/api/tags/${encodeURIComponent('工具')}`, { method: 'PATCH', body: { name: '效率' } })).status).toBe(200);
+    expect((await call(`/api/tags/${encodeURIComponent('人工智能')}`, { method: 'PATCH', body: { name: 'AI' } })).status).toBe(200);
+    expect(await tags()).toEqual([{ name: 'AI', count: 2 }, { name: '效率', count: 1 }]);
+    const idea: Idea = await (await call(`/api/ideas/${a.id}`)).json();
+    expect(idea.tags).toEqual(['AI']);
+
+    expect((await call(`/api/tags/${encodeURIComponent('AI')}`, { method: 'DELETE' })).status).toBe(204);
+    expect(((await (await call(`/api/ideas/${b.id}`)).json()) as Idea).tags).toEqual([]);
+    expect(await tags()).toEqual([{ name: '效率', count: 1 }]);
+
+    expect((await call('/api/tags/nope', { method: 'DELETE' })).status).toBe(404);
+    expect((await call('/api/tags/nope', { method: 'PATCH', body: { name: 'x' } })).status).toBe(404);
+    expect((await call(`/api/tags/${encodeURIComponent('效率')}`, { method: 'PATCH', body: { name: '有 空格' } })).status).toBe(400);
+    expect((await call('/api/tags/x', { method: 'DELETE', auth: false })).status).toBe(401);
   });
 });
 
@@ -342,6 +470,25 @@ describe('insights', () => {
     expect(body.weeks.at(-1)).toMatchObject({ created: 5, processed: 4 });
   });
 
+  it('counts ideas that skipped a stage and reports the success metrics', async () => {
+    const a = await create('a'); // inbox → building skips evaluating and validating
+    await move(a.id, 'building', ice(5, 5, 5));
+    const b = await create('b'); // step by step
+    await move(b.id, 'evaluating');
+    await move(b.id, 'validating', ice(5, 5, 5));
+    const c = await create('c'); // dropping is an exit, not a skip
+    await move(c.id, 'dropped', { conclusion: '重复' });
+    const old = await create('old');
+    await db.query(`UPDATE ideas SET created_at = now() - interval '15 days' WHERE id = $1`, [old.id]);
+    // A legacy shipped idea without a score (allowed before scores were required to ship).
+    const legacy = await create('legacy');
+    await db.query(`UPDATE ideas SET stage = 'shipped', conclusion = '上线了' WHERE id = $1`, [legacy.id]);
+
+    const body: Insights = await (await call('/api/insights?tz=UTC')).json();
+    expect(body.skipped).toBe(1);
+    expect(body.metrics).toEqual({ backlog: 1, stalled: 0, scoredRate: '66.6%', concludedRate: '100.0%' });
+  });
+
   it('buckets weeks (Monday start) in the requested time zone', async () => {
     const idea = await create('周一凌晨记的');
     // 01:00 on last week's Monday in Shanghai = 17:00 UTC on the Sunday before.
@@ -384,7 +531,7 @@ describe('export and import', () => {
     const a = await create('记账小程序', ['工具', '小程序']);
     await call(`/api/ideas/${a.id}`, { method: 'PATCH', body: { description: '**重点**', source: '朋友', links: ['https://example.com'] } });
     await move(a.id, 'evaluating');
-    await move(a.id, 'validating', ice(7, 8, 8));
+    await move(a.id, 'validating', { ...ice(7, 8, 8), plan: { hypothesis: '有人愿意付费', successCriteria: '' } });
     await call(`/api/ideas/${a.id}/events`, { body: { note: '访谈了 3 个人' } });
     const b = await create('播客搜索', ['AI']);
     await move(b.id, 'dropped', { conclusion: '有成熟竞品' });
@@ -399,7 +546,8 @@ describe('export and import', () => {
     const a = before.ideas.find((i) => i.title === '记账小程序')!;
     expect(a).toMatchObject({ stage: 'validating', impact: 7, links: ['https://example.com'] });
     expect([...a.tags].sort()).toEqual(['小程序', '工具'].sort());
-    expect(a.events.map((e) => e.type).sort()).toEqual(['created', 'note', 'stage', 'stage']);
+    expect(a.events.map((e) => e.type).sort()).toEqual(['created', 'note', 'score', 'stage', 'stage']);
+    expect(a).toMatchObject({ hypothesis: '有人愿意付费', successCriteria: '' });
 
     await db.query('TRUNCATE ideas, tags, idea_tags, idea_events CASCADE');
     const res = await call('/api/import/json', { body: before });
@@ -423,6 +571,15 @@ describe('export and import', () => {
     expect(events.map((e) => [e.type, e.toStage])).toEqual([['created', 'inbox']]);
     const tags: { name: string; count: number }[] = await (await call('/api/tags')).json();
     expect(tags.find((t) => t.name === '新标签')?.count).toBe(1);
+  });
+
+  it('still imports files exported before the validation plan existed', async () => {
+    await seed();
+    const file = await exportJson();
+    await db.query('TRUNCATE ideas, tags, idea_tags, idea_events CASCADE');
+    const legacy = file.ideas.map(({ hypothesis: _h, successCriteria: _s, ...rest }) => rest);
+    expect(await (await call('/api/import/json', { body: { ...file, ideas: legacy } })).json()).toEqual({ inserted: 3, skipped: 0 });
+    expect((await exportJson()).ideas.map((i) => [i.hypothesis, i.successCriteria])).toEqual([['', ''], ['', ''], ['', '']]);
   });
 
   it('rejects files that the app could not have produced', async () => {

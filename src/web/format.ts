@@ -1,4 +1,4 @@
-import { BACKLOG_DAYS } from '../shared/types';
+import { BACKLOG_DAYS, STALL_DAYS, type Idea } from '../shared/types';
 
 const DAY = 24 * 3600 * 1000;
 
@@ -29,3 +29,9 @@ export function formatDateTime(iso: string): string {
 
 // Same rule as the server's backlog count: created more than 14 × 24h ago.
 export const isBacklog = (iso: string, now = Date.now()) => now - new Date(iso).getTime() > BACKLOG_DAYS * DAY;
+
+// Same rule as the server's stalled count: a mid-funnel idea with no activity (updated_at) past its stage's limit.
+export function isStalled(idea: Pick<Idea, 'stage' | 'updatedAt'>, now = Date.now()) {
+  const days = STALL_DAYS[idea.stage as keyof typeof STALL_DAYS];
+  return days != null && now - new Date(idea.updatedAt).getTime() > days * DAY;
+}

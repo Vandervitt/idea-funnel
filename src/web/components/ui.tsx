@@ -94,24 +94,35 @@ export function Dialog({ open, onClose, labelledBy, children, className = '' }: 
   );
 }
 
-type Toast = { id: number; text: string; tone: 'ok' | 'error' };
-const ToastCtx = createContext<(text: string, tone?: Toast['tone']) => void>(() => {});
+type ToastAction = { label: string; onClick: () => void };
+type Toast = { id: number; text: string; tone: 'ok' | 'error'; action?: ToastAction };
+const ToastCtx = createContext<(text: string, tone?: Toast['tone'], action?: ToastAction) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const push = useCallback((text: string, tone: Toast['tone'] = 'ok') => {
+  const push = useCallback((text: string, tone: Toast['tone'] = 'ok', action?: ToastAction) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, text, tone }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
+    setToasts((t) => [...t, { id, text, tone, action }]);
+    // A toast with a button stays a little longer so there is time to reach it.
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 6000 : 3000);
   }, []);
   return (
     <ToastCtx.Provider value={push}>
       {children}
       <div role="status" aria-live="polite" className="fixed z-50 bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center pointer-events-none">
         {toasts.map((t) => (
-          <div key={t.id} className={`px-4 py-2 rounded-lg shadow-lg text-sm ${t.tone === 'ok' ? 'bg-ink text-bg' : 'bg-danger text-white'}`}>
+          <div key={t.id} className={`flex items-center gap-3 px-4 py-2 rounded-lg shadow-lg text-sm ${t.tone === 'ok' ? 'bg-ink text-bg' : 'bg-danger text-white'}`}>
             {t.text}
+            {t.action && (
+              <button type="button" className="pointer-events-auto font-bold underline cursor-pointer"
+                onClick={() => {
+                  t.action!.onClick();
+                  setToasts((all) => all.filter((x) => x.id !== t.id));
+                }}>
+                {t.action.label}
+              </button>
+            )}
           </div>
         ))}
       </div>

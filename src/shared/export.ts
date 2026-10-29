@@ -17,6 +17,8 @@ export function toMarkdown(ideas: ExportIdea[], exportedAt: string): string {
       }
       if (i.source) out.push(`- 来源：${i.source}`);
       for (const link of i.links) out.push(`- 链接：<${link}>`);
+      if (i.hypothesis) out.push(`- 验证假设：${i.hypothesis}`);
+      if (i.successCriteria) out.push(`- 成功标准：${i.successCriteria}`);
       if (i.conclusion) out.push(`- 结论：${i.conclusion}`);
       out.push(`- 记录于：${i.createdAt.slice(0, 10)}`);
       if (i.description.trim()) out.push('', i.description.trim());

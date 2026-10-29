@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, ApiError, useImport } from '../api';
+import { api, ApiError, downloadExport, useDeleteTag, useImport, useRenameTag, useTags } from '../api';
 import { parseBatch } from '../../shared/capture';
 import type { ImportResult } from '../../shared/types';
-import { TagChip, btn, useToast } from '../components/ui';
+import { Dialog, TagChip, btn, input, useToast } from '../components/ui';
 
 const section = 'flex flex-col gap-3 p-5 rounded-xl bg-surface border border-line';
 const PREVIEW_ROWS = 50;
@@ -20,13 +20,11 @@ export function SettingsPage() {
       <section aria-labelledby="export-title" className={section}>
         <h2 id="export-title" className="font-bold">导出</h2>
         <p className="text-muted">JSON 包含全部想法、标签和时间线，可以原样导回；Markdown 方便阅读和归档。</p>
-        <div className="flex flex-wrap gap-2.5">
-          <a href="/api/export?format=json" download className={`${btn.secondary} no-underline`}>导出 JSON</a>
-          <a href="/api/export?format=md" download className={`${btn.secondary} no-underline`}>导出 Markdown</a>
-        </div>
+        <ExportButtons />
       </section>
       <JsonImport />
       <BatchImport />
+      <TagManager />
       <section className={section}>
         <h2 className="font-bold">修改密码</h2>
         <p className="text-muted">
@@ -40,6 +38,109 @@ export function SettingsPage() {
         navigate('/login', { replace: true });
       }}>退出登录</button>
     </div>
+  );
+}
+
+function ExportButtons() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const run = async (format: 'json' | 'md') => {
+    setBusy(true);
+    try {
+      await downloadExport(format);
+    } catch (err) {
+      // 401 already redirects to the login page.
+      if (!(err instanceof ApiError && err.status === 401)) toast('导出失败，请重试', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap gap-2.5">
+      <button type="button" className={btn.secondary} disabled={busy} onClick={() => run('json')}>导出 JSON</button>
+      <button type="button" className={btn.secondary} disabled={busy} onClick={() => run('md')}>导出 Markdown</button>
+    </div>
+  );
+}
+
+const TAG_RE = /^[^\s#＃]{1,32}$/;
+
+function TagManager() {
+  const { data: tags } = useTags();
+  const rename = useRenameTag();
+  const del = useDeleteTag();
+  const toast = useToast();
+  const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
+  const [deleting, setDeleting] = useState<{ name: string; count: number } | null>(null);
+
+  async function saveRename() {
+    if (!editing) return;
+    const to = editing.to.trim().replace(/^[#＃]/, '');
+    if (to === editing.from) return setEditing(null);
+    if (!TAG_RE.test(to)) return toast('标签不能为空，不能包含空格或 #，最多 32 个字', 'error');
+    const merging = tags?.some((t) => t.name === to);
+    try {
+      await rename.mutateAsync({ from: editing.from, to });
+      toast(merging ? `已合并到 #${to}` : `已改名为 #${to}`);
+      setEditing(null);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '改名失败，请重试', 'error');
+    }
+  }
+
+  return (
+    <section aria-labelledby="tags-title" className={section}>
+      <h2 id="tags-title" className="font-bold">标签</h2>
+      <p className="text-muted">改成一个已有的标签名，会把两个标签合并。删除标签只会把它从想法上移除，不会删除想法。</p>
+      {!tags?.length ? (
+        <p className="text-muted text-[13px]">还没有在用的标签。</p>
+      ) : (
+        <ul className="flex flex-col">
+          {tags.map((t) => (
+            <li key={t.name} className="flex flex-wrap items-center gap-2 min-h-11 py-1 border-t border-line first:border-t-0">
+              {editing?.from === t.name ? (
+                <form className="flex flex-1 flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void saveRename(); }}>
+                  <label htmlFor="tag-rename" className="sr-only">{`#${t.name} 的新名字`}</label>
+                  <input id="tag-rename" autoFocus value={editing.to} maxLength={33} onChange={(e) => setEditing({ ...editing, to: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Escape' && setEditing(null)} className={`${input} flex-[1_1_160px] min-w-0`} />
+                  <button type="submit" className={btn.primary} disabled={rename.isPending}>保存</button>
+                  <button type="button" className={btn.ghost} onClick={() => setEditing(null)}>取消</button>
+                </form>
+              ) : (
+                <>
+                  <span className="font-medium">#{t.name}</span>
+                  <span className="font-mono text-xs text-muted">{t.count} 条</span>
+                  <button type="button" className={`${btn.ghost} ml-auto`} aria-label={`重命名 #${t.name}`}
+                    onClick={() => setEditing({ from: t.name, to: t.name })}>重命名</button>
+                  <button type="button" className={`${btn.ghost} text-danger`} aria-label={`删除 #${t.name}`}
+                    onClick={() => setDeleting(t)}>删除</button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <Dialog open={!!deleting} onClose={() => setDeleting(null)} labelledBy="tag-del-title">
+        {deleting && (
+          <div className="flex flex-col gap-4">
+            <h2 id="tag-del-title" className="text-lg font-bold">删除标签 #{deleting.name}？</h2>
+            <p className="text-muted">会从 {deleting.count} 条想法上移除这个标签，想法本身不受影响。</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" className={btn.secondary} onClick={() => setDeleting(null)}>取消</button>
+              <button type="button" className={btn.danger} disabled={del.isPending} onClick={async () => {
+                try {
+                  await del.mutateAsync(deleting.name);
+                  toast(`已删除 #${deleting.name}`);
+                  setDeleting(null);
+                } catch {
+                  toast('删除失败，请重试', 'error');
+                }
+              }}>确认删除</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+    </section>
   );
 }
 

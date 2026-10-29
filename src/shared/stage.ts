@@ -10,7 +10,8 @@ export const STAGE_LABELS: Record<Stage, string> = {
   dropped: '已放弃',
 };
 
-const NEEDS_SCORE: ReadonlySet<Stage> = new Set(['validating', 'building']);
+/** Stages an idea can only be in with an ICE score (PRD: 「验证中及之后 100% 有评分」). */
+export const SCORED_STAGES: ReadonlySet<Stage> = new Set(['validating', 'building', 'shipped']);
 export const CLOSED_STAGES: ReadonlySet<Stage> = new Set(['shipped', 'dropped']);
 
 export type TransitionNeed = 'score' | 'conclusion' | 'reopen' | 'same';
@@ -29,7 +30,7 @@ export interface TransitionSubject {
 export function checkTransition(subject: TransitionSubject, to: Stage): TransitionCheck {
   if (subject.stage === to) return { ok: false, need: 'same' };
   if (CLOSED_STAGES.has(subject.stage) && to !== 'evaluating') return { ok: false, need: 'reopen' };
-  if (NEEDS_SCORE.has(to) && !subject.scored) return { ok: false, need: 'score' };
+  if (SCORED_STAGES.has(to) && !subject.scored) return { ok: false, need: 'score' };
   if (CLOSED_STAGES.has(to) && subject.conclusion.trim() === '') return { ok: false, need: 'conclusion' };
   return { ok: true };
 }

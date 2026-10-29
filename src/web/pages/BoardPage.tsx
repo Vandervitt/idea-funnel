@@ -14,7 +14,8 @@ import {
 import { useBoard, useStats } from '../api';
 import { STAGE_LABELS, type Stage } from '../../shared/stage';
 import type { BoardColumn, Idea } from '../../shared/types';
-import { isBacklog, relativeAge } from '../format';
+import { isBacklog, isStalled, relativeAge } from '../format';
+import { STALL_DAYS, type StallStage } from '../../shared/types';
 import { useStageMover } from '../components/StageMover';
 import { Icon, IceBadge, STAGE_DOT, TagChip, btn } from '../components/ui';
 import { TagFilter, useFilterParams } from '../components/Filters';
@@ -52,6 +53,8 @@ export function BoardPage() {
         </div>
       )}
 
+      {stats && <StalledNotice stalled={stats.stalled} />}
+
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[22px] font-bold">看板</h1>
         <span className="text-muted">共 {total} 条</span>
@@ -84,7 +87,9 @@ export function BoardPage() {
                 ),
               )}
             </div>
-            <DragOverlay>{dragging && <CardBody idea={dragging} lifted />}</DragOverlay>
+            {/* No drop animation: when the drop opens a modal (score / conclusion) the animation never finishes,
+                and the lifted copy stays on top of the card, blocking the next drag. */}
+            <DragOverlay dropAnimation={null}>{dragging && <CardBody idea={dragging} lifted />}</DragOverlay>
           </DndContext>
 
           {/* Mobile: one stage at a time. */}
@@ -104,6 +109,22 @@ export function BoardPage() {
       )}
 
       <p className="hidden md:block text-xs text-muted">提示：拖动卡片可以换阶段；进入「验证中」前需要先打 ICE 分，进入「已落地 / 已放弃」需要填写结论。</p>
+    </div>
+  );
+}
+
+function StalledNotice({ stalled }: { stalled: Record<StallStage, number> }) {
+  const stages = (Object.keys(STALL_DAYS) as StallStage[]).filter((s) => stalled[s] > 0);
+  if (!stages.length) return null;
+  return (
+    <div role="status" aria-label="停滞提醒" className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-xl bg-sunken border border-line">
+      <Icon name="clock" className="text-muted" />
+      <span className="flex-[1_1_240px]">有想法很久没有进展了，推进一步、记一笔备注，或者干脆放弃：</span>
+      {stages.map((s) => (
+        <Link key={s} to={`/list?stage=${s}&sort=updated_asc`} className="inline-flex items-center min-h-9 px-3 rounded-lg border border-line-strong bg-surface text-ink-2 no-underline">
+          {STAGE_LABELS[s]} <b className="mx-1">{stalled[s]}</b> 条超过 {STALL_DAYS[s]} 天
+        </Link>
+      ))}
     </div>
   );
 }
@@ -164,14 +185,15 @@ function CardLink({ idea }: { idea: Idea }) {
 
 function CardBody({ idea, lifted }: { idea: Idea; lifted?: boolean }) {
   const stale = idea.stage === 'inbox' && isBacklog(idea.createdAt);
+  const stalled = isStalled(idea);
   return (
     <div className={`flex flex-col gap-2.5 px-3.5 py-3 rounded-[10px] bg-surface border border-line hover:border-line-strong ${lifted ? 'shadow-xl rotate-1' : 'shadow-sm'}`}>
       <span className="font-medium leading-snug break-words">{idea.title}</span>
       {idea.tags.length > 0 && <span className="flex flex-wrap gap-1.5">{idea.tags.map((t) => <TagChip key={t} name={t} />)}</span>}
       <span className="flex items-center gap-2 text-xs">
         <IceBadge x10={idea.iceX10} />
-        <span className={`ml-auto ${stale ? 'text-warn-ink font-medium' : 'text-muted'}`}>
-          {relativeAge(idea.createdAt)}{stale && ' · 积压'}
+        <span className={`ml-auto ${stale || stalled ? 'text-warn-ink font-medium' : 'text-muted'}`}>
+          {stalled ? `${relativeAge(idea.updatedAt)}没动 · 停滞` : `${relativeAge(idea.createdAt)}${stale ? ' · 积压' : ''}`}
         </span>
       </span>
     </div>

@@ -36,6 +36,12 @@ describe('stage transitions', () => {
     expect(checkTransition(scored, 'validating')).toEqual({ ok: true });
   });
 
+  it('requires a score before shipped, even straight from the inbox', () => {
+    expect(checkTransition({ ...unscored, conclusion: '上线了' }, 'shipped')).toEqual({ ok: false, need: 'score' });
+    expect(checkTransition({ ...unscored, stage: 'inbox', conclusion: '上线了' }, 'shipped')).toEqual({ ok: false, need: 'score' });
+    expect(checkTransition({ ...scored, conclusion: '上线了' }, 'shipped')).toEqual({ ok: true });
+  });
+
   it('requires a conclusion before shipped or dropped', () => {
     expect(checkTransition(scored, 'shipped')).toEqual({ ok: false, need: 'conclusion' });
     expect(checkTransition({ ...unscored, stage: 'inbox' }, 'dropped')).toEqual({ ok: false, need: 'conclusion' });

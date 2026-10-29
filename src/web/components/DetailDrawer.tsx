@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 import { useAddNote, useDeleteIdea, useDeleteNote, useEvents, useIdea, useTags, useUpdateIdea } from '../api';
-import { CLOSED_STAGES, STAGES, STAGE_LABELS, type Stage } from '../../shared/stage';
+import { CLOSED_STAGES, SCORED_STAGES, STAGES, STAGE_LABELS, type Stage } from '../../shared/stage';
 import { formatIce } from '../../shared/ice';
 import type { Idea } from '../../shared/types';
 import type { UpdateIdeaInput } from '../../shared/schema';
 import { formatDate, formatDateTime } from '../format';
 import { useStageMover, IceSliders } from './StageMover';
+import { Markdown } from './Markdown';
 import { Dialog, Icon, TagChip, btn, input, useToast, STAGE_DOT } from './ui';
 
 export function DetailDrawer() {
@@ -60,7 +59,9 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
   const [save, setSave] = useState<SaveState>('saved');
 
   // Text fields are edited locally and saved 1s after the last keystroke (or on blur).
-  const [draft, setDraft] = useState({ title: idea.title, description: idea.description, source: idea.source });
+  const [draft, setDraft] = useState({
+    title: idea.title, description: idea.description, source: idea.source, hypothesis: idea.hypothesis, successCriteria: idea.successCriteria,
+  });
   const pending = useRef<Partial<typeof draft>>({});
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -102,8 +103,19 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
   flushRef.current = flush;
   useEffect(() => () => flushRef.current(), []);
 
+  // The plan can also be written in the stage dialog: follow the server unless there is an unsaved edit.
+  useEffect(() => {
+    setDraft((d) => ({
+      ...d,
+      ...(pending.current.hypothesis === undefined ? { hypothesis: idea.hypothesis } : {}),
+      ...(pending.current.successCriteria === undefined ? { successCriteria: idea.successCriteria } : {}),
+    }));
+  }, [idea.hypothesis, idea.successCriteria]);
+
   const closed = CLOSED_STAGES.has(idea.stage);
-  const needsScore = idea.stage === 'validating' || idea.stage === 'building';
+  const needsScore = SCORED_STAGES.has(idea.stage);
+  // The plan matters from 验证中 on; earlier it only shows once something was written.
+  const showPlan = idea.stage === 'validating' || idea.stage === 'building' || closed || !!draft.hypothesis || !!draft.successCriteria;
 
   return (
     <div className="flex flex-col h-full">
@@ -145,6 +157,25 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
 
         <IceSection idea={idea} needsScore={needsScore} onScore={() => mover.score(idea)} onSave={(ice) => patch({ ice })} />
 
+        {showPlan && (
+          <section aria-labelledby="plan-h" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline gap-2.5">
+              <h2 id="plan-h" className="font-bold">验证计划</h2>
+              <span className="text-xs text-muted">写下要验证什么、怎样算成功，落地或放弃时对照</span>
+            </div>
+            <label className="flex flex-col gap-1.5 text-muted text-[13px]">
+              验证假设
+              <textarea rows={2} maxLength={2000} value={draft.hypothesis} onChange={(e) => edit('hypothesis', e.target.value)} onBlur={flush}
+                placeholder="比如：独立开发者愿意为这个功能付费" className={`${textArea} text-sm`} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-muted text-[13px]">
+              成功标准
+              <textarea rows={2} maxLength={2000} value={draft.successCriteria} onChange={(e) => edit('successCriteria', e.target.value)} onBlur={flush}
+                placeholder="比如：访谈 10 人，至少 3 人愿意预付" className={`${textArea} text-sm`} />
+            </label>
+          </section>
+        )}
+
         <DescriptionEditor value={draft.description} onChange={(v) => edit('description', v)} onBlur={flush} />
 
         <div className="grid sm:grid-cols-2 gap-4">
@@ -161,6 +192,8 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
     </div>
   );
 }
+
+const textArea = 'w-full px-3 py-2 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-accent resize-y';
 
 function SaveIndicator({ state }: { state: SaveState }) {
   const text = { saved: '已保存', dirty: '未保存', saving: '保存中…', error: '保存失败' }[state];
@@ -273,8 +306,6 @@ function IceSection({ idea, needsScore, onScore, onSave }: {
 
 function DescriptionEditor({ value, onChange, onBlur }: { value: string; onChange: (v: string) => void; onBlur: () => void }) {
   const [mode, setMode] = useState<'edit' | 'preview'>(value ? 'preview' : 'edit');
-  // Markdown is user content: sanitize before injecting.
-  const html = useMemo(() => DOMPurify.sanitize(marked.parse(value, { async: false, gfm: true, breaks: true })), [value]);
   return (
     <section aria-labelledby="desc-h" className="flex flex-col gap-2">
       <div className="flex items-center">
@@ -296,7 +327,7 @@ function DescriptionEditor({ value, onChange, onBlur }: { value: string; onChang
             className="w-full px-4 py-3 rounded-xl border border-line-strong bg-surface outline-none focus:border-accent resize-y leading-relaxed" />
         </>
       ) : value ? (
-        <div className="prose-idea px-4 py-3 rounded-xl border border-line" data-testid="desc-preview" dangerouslySetInnerHTML={{ __html: html }} />
+        <Markdown source={value} className="px-4 py-3 rounded-xl border border-line" testId="desc-preview" />
       ) : (
         <button type="button" onClick={() => setMode('edit')} className="px-4 py-6 rounded-xl border border-dashed border-line-strong text-muted cursor-pointer">
           还没有描述，点击开始写
@@ -351,6 +382,7 @@ function Timeline({ ideaId }: { ideaId: string }) {
   const describe = (e: NonNullable<typeof events>[number]) => {
     if (e.type === 'created') return '创建';
     if (e.type === 'note') return '备注';
+    if (e.type === 'score') return 'ICE 评分';
     return `${e.fromStage ? STAGE_LABELS[e.fromStage] : ''} → ${e.toStage ? STAGE_LABELS[e.toStage] : ''}`;
   };
 

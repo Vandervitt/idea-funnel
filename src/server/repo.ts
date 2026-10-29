@@ -2,15 +2,18 @@ import type { Db, Statement } from './db.js';
 import type {
   CreateIdeaInput, ExportIdea, Idea, IdeaEvent, IdeaPage, ImportResult, Insights, ListQuery, BoardColumn, Stats, UpdateIdeaInput,
 } from '../shared/schema.js';
-import { BACKLOG_DAYS } from '../shared/schema.js';
-import { STAGES, CLOSED_STAGES, checkTransition, type Stage, type TransitionNeed } from '../shared/stage.js';
+import { BACKLOG_DAYS, STALL_DAYS } from '../shared/schema.js';
+import { formatIce, iceScoreX10, truncateRate } from '../shared/ice.js';
+import { STAGES, CLOSED_STAGES, SCORED_STAGES, checkTransition, type Stage, type TransitionNeed } from '../shared/stage.js';
 import { FUNNEL_PATH, funnelSteps, type FunnelStage } from '../shared/insights.js';
 
 const BOARD_COLUMN_LIMIT = 50;
+/** Score edits this close to the previous score entry (with nothing in between) update that entry instead of adding one. */
+const SCORE_MERGE_MINUTES = 10;
 
 const IDEA_COLUMNS = `
   i.id, i.title, i.description, i.stage, i.impact, i.confidence, i.ease, i.ice_x10, i.source, i.links,
-  i.conclusion, i.stage_changed_at, i.created_at, i.updated_at,
+  i.conclusion, i.hypothesis, i.success_criteria, i.stage_changed_at, i.created_at, i.updated_at,
   COALESCE((SELECT array_agg(t.name ORDER BY t.name) FROM idea_tags it JOIN tags t ON t.id = it.tag_id
             WHERE it.idea_id = i.id), '{}') AS tags`;
 
@@ -31,6 +34,8 @@ function toIdea(r: Row): Idea {
     source: r.source as string,
     links: (r.links as string[]) ?? [],
     conclusion: r.conclusion as string,
+    hypothesis: r.hypothesis as string,
+    successCriteria: r.success_criteria as string,
     tags: (r.tags as string[]) ?? [],
     stageChangedAt: iso(r.stage_changed_at),
     createdAt: iso(r.created_at),
@@ -70,6 +75,35 @@ function setTagsStatements(owner: string, ideaId: string, tags: string[]): State
   ];
 }
 
+type Ice = { impact: number; confidence: number; ease: number };
+
+const sameIce = (idea: Idea, ice: Ice | null) =>
+  ice ? idea.impact === ice.impact && idea.confidence === ice.confidence && idea.ease === ice.ease : idea.iceX10 == null;
+
+const iceNote = (ice: Ice | null) =>
+  ice ? `${formatIce(iceScoreX10(ice.impact, ice.confidence, ice.ease))}（I ${ice.impact} / C ${ice.confidence} / E ${ice.ease}）` : '清除评分';
+
+/**
+ * Timeline entry for a score change, merged into the latest entry when that is a recent score entry.
+ * `ifStage`: only write it when the idea is (now) in that stage — for moves guarded against concurrent changes.
+ */
+function scoreEventStatement(ideaId: string, ice: Ice | null, ifStage?: Stage): Statement {
+  const guard = 'AND ($4::text IS NULL OR EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND stage = $4))';
+  return {
+    text: `WITH latest AS (
+             SELECT id, type, created_at FROM idea_events WHERE idea_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1
+           ),
+           merged AS (
+             UPDATE idea_events e SET note = $2, created_at = now() FROM latest l
+             WHERE e.id = l.id AND l.type = 'score' AND l.created_at > now() - make_interval(mins => $3) ${guard}
+             RETURNING e.id
+           )
+           INSERT INTO idea_events (idea_id, type, note)
+           SELECT $1, 'score', $2 WHERE NOT EXISTS (SELECT 1 FROM merged) ${guard}`,
+    params: [ideaId, iceNote(ice), SCORE_MERGE_MINUTES, ifStage ?? null],
+  };
+}
+
 export class TransitionError extends Error {
   constructor(public need: TransitionNeed) {
     super(need);
@@ -101,6 +135,23 @@ export function createRepo(db: Db) {
     return rows[0] ? toIdea(rows[0]) : null;
   }
 
+  async function stats(owner: string): Promise<Stats> {
+    const [r] = await db.query<{ inbox: number; backlog: number } & Stats['stalled']>(
+      `SELECT count(*) FILTER (WHERE stage = 'inbox')::int AS inbox,
+              count(*) FILTER (WHERE stage = 'inbox' AND created_at < now() - make_interval(days => $2))::int AS backlog,
+              count(*) FILTER (WHERE stage = 'evaluating' AND updated_at < now() - make_interval(days => $3))::int AS evaluating,
+              count(*) FILTER (WHERE stage = 'validating' AND updated_at < now() - make_interval(days => $4))::int AS validating,
+              count(*) FILTER (WHERE stage = 'building' AND updated_at < now() - make_interval(days => $5))::int AS building
+       FROM ideas WHERE owner_id = $1 AND stage IN ('inbox', 'evaluating', 'validating', 'building')`,
+      [owner, BACKLOG_DAYS, STALL_DAYS.evaluating, STALL_DAYS.validating, STALL_DAYS.building],
+    );
+    return {
+      inbox: r.inbox,
+      backlog: r.backlog,
+      stalled: { evaluating: r.evaluating, validating: r.validating, building: r.building },
+    };
+  }
+
   return {
     getIdea,
 
@@ -120,7 +171,7 @@ export function createRepo(db: Db) {
     async updateIdea(owner: string, id: string, input: UpdateIdeaInput): Promise<Idea | null> {
       const current = await getIdea(owner, id);
       if (!current) return null;
-      if (input.ice === null && (current.stage === 'validating' || current.stage === 'building')) {
+      if (input.ice === null && SCORED_STAGES.has(current.stage)) {
         throw new TransitionError('score');
       }
       const sets: string[] = [];
@@ -132,6 +183,8 @@ export function createRepo(db: Db) {
       if (input.title !== undefined) set('title', input.title);
       if (input.description !== undefined) set('description', input.description);
       if (input.source !== undefined) set('source', input.source);
+      if (input.hypothesis !== undefined) set('hypothesis', input.hypothesis);
+      if (input.successCriteria !== undefined) set('success_criteria', input.successCriteria);
       if (input.links !== undefined) set('links', JSON.stringify(input.links));
       if (input.ice !== undefined) {
         set('impact', input.ice?.impact ?? null);
@@ -142,6 +195,7 @@ export function createRepo(db: Db) {
         { text: `UPDATE ideas SET ${[...sets, 'updated_at = now()'].join(', ')} WHERE owner_id = $1 AND id = $2`, params },
       ];
       if (input.tags !== undefined) statements.push(...setTagsStatements(owner, id, input.tags));
+      if (input.ice !== undefined && !sameIce(current, input.ice)) statements.push(scoreEventStatement(id, input.ice));
       await db.transaction(statements);
       return getIdea(owner, id);
     },
@@ -154,7 +208,7 @@ export function createRepo(db: Db) {
     async moveStage(
       owner: string,
       id: string,
-      input: { to: Stage; ice?: { impact: number; confidence: number; ease: number }; conclusion?: string },
+      input: { to: Stage; ice?: Ice; conclusion?: string; plan?: { hypothesis: string; successCriteria: string } },
     ): Promise<Idea | null> {
       const current = await getIdea(owner, id);
       if (!current) return null;
@@ -171,11 +225,14 @@ export function createRepo(db: Db) {
         {
           // Guarded by the stage we validated against, so a concurrent move cannot slip past the rules.
           text: `UPDATE ideas SET stage = $3, conclusion = $4, stage_changed_at = now(), updated_at = now(),
-                   impact = COALESCE($5, impact), confidence = COALESCE($6, confidence), ease = COALESCE($7, ease)
+                   impact = COALESCE($5, impact), confidence = COALESCE($6, confidence), ease = COALESCE($7, ease),
+                   hypothesis = COALESCE($9, hypothesis), success_criteria = COALESCE($10, success_criteria)
                  WHERE owner_id = $1 AND id = $2 AND stage = $8 RETURNING id`,
           params: [owner, id, input.to, conclusion, input.ice?.impact ?? null, input.ice?.confidence ?? null,
-            input.ice?.ease ?? null, current.stage],
+            input.ice?.ease ?? null, current.stage, input.plan?.hypothesis ?? null, input.plan?.successCriteria ?? null],
         },
+        // Before the stage entry, so the move is the latest entry; skipped if the guarded update above did not happen.
+        ...(input.ice && !sameIce(current, input.ice) ? [scoreEventStatement(id, input.ice, input.to)] : []),
         {
           text: `INSERT INTO idea_events (idea_id, type, from_stage, to_stage, note)
                  SELECT $1, 'stage', $2, $3, $4 WHERE EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND stage = $3)`,
@@ -203,8 +260,10 @@ export function createRepo(db: Db) {
                     GROUP BY it.idea_id HAVING count(*) = ${p(q.tags.length)})`);
       }
 
-      const sortCol = { updated: 'i.updated_at', created: 'i.created_at', created_asc: 'i.created_at', ice: 'i.ice_x10' }[q.sort];
-      const asc = q.sort === 'created_asc';
+      const sortCol = {
+        updated: 'i.updated_at', updated_asc: 'i.updated_at', created: 'i.created_at', created_asc: 'i.created_at', ice: 'i.ice_x10',
+      }[q.sort];
+      const asc = q.sort.endsWith('_asc');
       const cursor = q.cursor ? decodeCursor(q.cursor) : null;
       if (cursor) {
         if (q.sort === 'ice') {
@@ -230,7 +289,7 @@ export function createRepo(db: Db) {
         rows.length > q.limit && last
           ? encodeCursor({
               id: last.id,
-              v: q.sort === 'ice' ? last.iceX10 : q.sort === 'updated' ? last.updatedAt : last.createdAt,
+              v: q.sort === 'ice' ? last.iceX10 : sortCol === 'i.updated_at' ? last.updatedAt : last.createdAt,
             })
           : null;
       return { items, nextCursor };
@@ -264,18 +323,10 @@ export function createRepo(db: Db) {
       return [...columns.values()];
     },
 
-    async stats(owner: string): Promise<Stats> {
-      const [r] = await db.query<{ inbox: number; backlog: number }>(
-        `SELECT count(*)::int AS inbox,
-                (count(*) FILTER (WHERE created_at < now() - make_interval(days => $2)))::int AS backlog
-         FROM ideas WHERE owner_id = $1 AND stage = 'inbox'`,
-        [owner, BACKLOG_DAYS],
-      );
-      return r;
-    },
+    stats,
 
     async insights(owner: string, tz: string): Promise<Insights> {
-      const [stageRows, furthestRows, weeks] = await Promise.all([
+      const [stageRows, furthestRows, weeks, [skipped], [m], current] = await Promise.all([
         db.query<{ stage: Stage; count: number }>(
           `SELECT stage, count(*)::int AS count FROM ideas WHERE owner_id = $1 GROUP BY stage`,
           [owner],
@@ -312,12 +363,36 @@ export function createRepo(db: Db) {
            ORDER BY w.wk`,
           [owner, tz],
         ),
+        // Forward moves that jumped over at least one step of the main path (dropping is an exit, not a jump).
+        db.query<{ n: number }>(
+          `SELECT count(DISTINCT e.idea_id)::int AS n FROM idea_events e JOIN ideas i ON i.id = e.idea_id
+           WHERE i.owner_id = $1 AND e.type = 'stage'
+             AND array_position($2::text[], e.to_stage) - array_position($2::text[], e.from_stage) > 1`,
+          [owner, FUNNEL_PATH],
+        ),
+        db.query<{ scored_total: number; scored: number; closed_total: number; concluded: number }>(
+          `SELECT count(*) FILTER (WHERE stage = ANY($2::text[]))::int AS scored_total,
+                  count(*) FILTER (WHERE stage = ANY($2::text[]) AND ice_x10 IS NOT NULL)::int AS scored,
+                  count(*) FILTER (WHERE stage IN ('shipped', 'dropped'))::int AS closed_total,
+                  count(*) FILTER (WHERE stage IN ('shipped', 'dropped') AND btrim(conclusion) <> '')::int AS concluded
+           FROM ideas WHERE owner_id = $1`,
+          [owner, [...SCORED_STAGES]],
+        ),
+        stats(owner),
       ]);
+      const rate = (part: number, total: number) => (total > 0 ? truncateRate(part, total) : null);
       const counts = new Map(stageRows.map((r) => [r.stage, r.count]));
       return {
         stages: STAGES.map((stage) => ({ stage, count: counts.get(stage) ?? 0 })),
         funnel: funnelSteps(Object.fromEntries(furthestRows.map((r) => [r.stage, r.count]))),
         weeks,
+        skipped: skipped.n,
+        metrics: {
+          backlog: current.backlog,
+          stalled: current.stalled.evaluating + current.stalled.validating + current.stalled.building,
+          scoredRate: rate(m.scored, m.scored_total),
+          concludedRate: rate(m.concluded, m.closed_total),
+        },
       };
     },
 
@@ -355,11 +430,11 @@ export function createRepo(db: Db) {
       const [r] = await db.query<{ inserted: number }>(
         `WITH ins AS (
            INSERT INTO ideas (id, owner_id, title, description, stage, impact, confidence, ease, source, links, conclusion,
-                              stage_changed_at, created_at, updated_at)
+                              hypothesis, success_criteria, stage_changed_at, created_at, updated_at)
            SELECT x.id, $1, x.title, x.description, x.stage, x.impact, x.confidence, x.ease, x.source, x.links, x.conclusion,
-                  x."stageChangedAt", x."createdAt", x."updatedAt"
+                  x.hypothesis, x."successCriteria", x."stageChangedAt", x."createdAt", x."updatedAt"
            FROM jsonb_to_recordset($2::jsonb) AS x(id uuid, title text, description text, stage text, impact smallint,
-                confidence smallint, ease smallint, source text, links jsonb, conclusion text,
+                confidence smallint, ease smallint, source text, links jsonb, conclusion text, hypothesis text, "successCriteria" text,
                 "stageChangedAt" timestamptz, "createdAt" timestamptz, "updatedAt" timestamptz)
            ON CONFLICT (id) DO NOTHING
            RETURNING id
@@ -398,11 +473,36 @@ export function createRepo(db: Db) {
 
     async listTags(owner: string): Promise<{ name: string; count: number }[]> {
       return db.query(
+        // Inner join: tags no idea uses any more stay out of filters and autocomplete.
         `SELECT t.name, count(it.idea_id)::int AS count FROM tags t
-         LEFT JOIN idea_tags it ON it.tag_id = t.id
+         JOIN idea_tags it ON it.tag_id = t.id
          WHERE t.owner_id = $1 GROUP BY t.name ORDER BY count DESC, t.name`,
         [owner],
       );
+    },
+
+    /** Renames a tag; renaming to a name that already exists merges the two. */
+    async renameTag(owner: string, from: string, to: string): Promise<boolean> {
+      const [tag] = await db.query<{ id: string }>(`SELECT id FROM tags WHERE owner_id = $1 AND name = $2`, [owner, from]);
+      if (!tag) return false;
+      if (from === to) return true;
+      await db.transaction([
+        { text: `INSERT INTO tags (owner_id, name) VALUES ($1, $2) ON CONFLICT (owner_id, name) DO NOTHING`, params: [owner, to] },
+        {
+          text: `INSERT INTO idea_tags (idea_id, tag_id)
+                 SELECT it.idea_id, t.id FROM idea_tags it JOIN tags t ON t.owner_id = $1 AND t.name = $3
+                 WHERE it.tag_id = $2
+                 ON CONFLICT DO NOTHING`,
+          params: [owner, tag.id, to],
+        },
+        { text: `DELETE FROM tags WHERE owner_id = $1 AND id = $2`, params: [owner, tag.id] },
+      ]);
+      return true;
+    },
+
+    async deleteTag(owner: string, name: string): Promise<boolean> {
+      const rows = await db.query(`DELETE FROM tags WHERE owner_id = $1 AND name = $2 RETURNING id`, [owner, name]);
+      return rows.length > 0;
     },
 
     async listEvents(owner: string, ideaId: string): Promise<IdeaEvent[] | null> {
@@ -417,8 +517,10 @@ export function createRepo(db: Db) {
 
     async addNote(owner: string, ideaId: string, note: string): Promise<IdeaEvent | null> {
       const rows = await db.query(
-        `INSERT INTO idea_events (idea_id, type, note)
-         SELECT id, 'note', $3 FROM ideas WHERE owner_id = $1 AND id = $2
+        // A note is activity: it keeps the idea from counting as stalled.
+        `WITH touched AS (UPDATE ideas SET updated_at = now() WHERE owner_id = $1 AND id = $2 RETURNING id)
+         INSERT INTO idea_events (idea_id, type, note)
+         SELECT id, 'note', $3 FROM touched
          RETURNING id, type, from_stage, to_stage, note, created_at`,
         [owner, ideaId, note],
       );
