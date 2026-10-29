@@ -17,6 +17,8 @@ npm run dev          # http://localhost:5173 ，默认密码 idea-funnel
 
 当前使用 **Vercel + Neon**（Vercel Marketplace 集成）。推送到 `main` 会自动部署到生产环境，其他分支会生成预览部署。
 
+**区域**：函数固定在新加坡（`vercel.json` 中的 `regions: ["sin1"]`），与 Neon 数据库（`ap-southeast-1`）在同一区域。不要删掉这一项，否则会回到默认的 `iad1`（美国东部），每次查询都要跨太平洋。
+
 **构建流程**（`npm run vercel-build`）：先执行 `prisma migrate deploy`，再构建前端。预览部署会迁移自己的 Neon 分支；如果连到的是生产库，构建会直接失败。
 
 **首次配置（只需一次）**
