@@ -1,0 +1,14 @@
+// Cloudflare Workers deployment (used only if Cloudflare is chosen).
+// Secrets: wrangler secret put DATABASE_URL / PASSWORD_HASH / SESSION_SECRET
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "idea-funnel",
+  "main": "src/entry/cloudflare.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true }
+}

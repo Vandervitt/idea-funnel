@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.data/
+.env.local
+.dev.vars
+.wrangler/
+.vercel/
+.playwright/
+.playwright-mcp/
+test-results/
+playwright-report/
+.remember/
