@@ -15,7 +15,11 @@ npm run dev          # http://localhost:5173 ，默认密码 idea-funnel
 
 ## 部署
 
-当前使用 **Vercel + Neon**（Vercel Marketplace 集成）。推送到 `main` 会自动部署到生产环境，其他分支会生成预览部署。
+当前使用 **Vercel + Neon**（Vercel Marketplace 集成），由 Vercel 的 Git 集成部署（Vercel 项目连接 GitHub 仓库 `Vandervitt/idea-funnel`）：
+
+- 推送到 `main` → 部署到**生产**环境。
+- 推送到 `preview` → 部署为**预览**（Neon 会为它创建独立的数据库分支）。
+- 其他分支不部署（`vercel.json` 中的 `git.deploymentEnabled` 只允许这两个分支）。功能分支在本地合入 `preview` 或 `main` 后推送即可。
 
 **区域**：函数固定在新加坡（`vercel.json` 中的 `regions: ["sin1"]`），与 Neon 数据库（`ap-southeast-1`）在同一区域。不要删掉这一项，否则会回到默认的 `iad1`（美国东部），每次查询都要跨太平洋。
 
@@ -30,6 +34,6 @@ npm run dev          # http://localhost:5173 ，默认密码 idea-funnel
    - `PRODUCTION_NEON_ENDPOINT`：生产库的 endpoint id（`ep-xxx`），用于判断预览是否误连生产库
 3. 如果生产库里已经有表、但没有 Prisma 迁移记录，先执行一次基线标记：`npx prisma migrate resolve --applied 20261029000000_init`
 
-**CI**：`.github/workflows/ci.yml` 在 PR 和 `main` 推送时执行类型检查、单元/集成测试、构建、Vercel 函数加载检查、Prisma 一致性检查（真实 Postgres）和 E2E。
+**CI**：`.github/workflows/ci.yml` 只做检查，不负责部署；在 PR 和 `main` / `preview` 推送时执行类型检查、单元/集成测试、构建、Vercel 函数加载检查、Prisma 一致性检查（真实 Postgres）和 E2E。
 
 **Cloudflare Workers（备用）**：入口和配置都保留了（`wrangler.jsonc`）。注意免费版每个请求的 CPU 时间只有约 10ms，登录时的 PBKDF2 哈希大概率会超时。

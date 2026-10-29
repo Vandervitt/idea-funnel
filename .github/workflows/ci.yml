@@ -1,9 +1,11 @@
 name: CI
 
+# Checks only. Deployment is Vercel's Git integration (see vercel.json `git.deploymentEnabled`):
+# main → production, preview → preview; Vercel's build runs the Prisma migrations.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, preview]
 
 concurrency:
   group: ci-${{ github.ref }}

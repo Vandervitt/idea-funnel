@@ -3,6 +3,7 @@
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "regions": ["sin1"],
+  "git": { "deploymentEnabled": { "main": true, "preview": true } },
   "rewrites": [
     {
       "source": "/api/(.*)",

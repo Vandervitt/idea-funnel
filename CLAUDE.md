@@ -13,7 +13,7 @@
 | `src/web/` | React SPA（Vite 根目录） |
 | `prisma/` | `schema.prisma` + `migrations/`：**仅用 Prisma Migrate 管理表结构**，业务查询仍是 `repo.ts` 里的 SQL |
 | `scripts/` | `vercel-build.mjs`（构建时迁移）、`pg-local.mjs`（本地 Postgres）、`verify-vercel-function.mjs`、`hash-password.ts` |
-| `.github/workflows/ci.yml` | PR / main 推送时跑全部检查 |
+| `.github/workflows/ci.yml` | PR / `main` / `preview` 推送时跑全部检查（部署由 Vercel Git 集成负责：`main` → 生产，`preview` → 预览） |
 | `e2e/` | Playwright 用例 |
 
 ## 核心约定
