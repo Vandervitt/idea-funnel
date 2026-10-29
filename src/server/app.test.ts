@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createApp } from './app';
-import { hashPassword, signSession, SESSION_COOKIE, MAX_GLOBAL_FAILURES } from './auth';
-import { createPgliteDb } from './pglite';
-import type { Idea, IdeaEvent, IdeaPage, BoardColumn } from '../shared/schema';
+import { createApp } from './app.js';
+import { hashPassword, signSession, SESSION_COOKIE, MAX_GLOBAL_FAILURES } from './auth.js';
+import { createPgliteDb } from './pglite.js';
+import type { Idea, IdeaEvent, IdeaPage, BoardColumn } from '../shared/schema.js';
 
 const PASSWORD = 'correct horse battery staple';
 const SECRET = 'test-secret-test-secret-test-secret-0123';

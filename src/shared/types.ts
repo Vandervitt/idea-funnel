@@ -1,4 +1,4 @@
-import type { Stage } from './stage';
+import type { Stage } from './stage.js';
 
 export const SORTS = ['updated', 'created', 'created_asc', 'ice'] as const;
 export type Sort = (typeof SORTS)[number];

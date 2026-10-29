@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { STAGES } from './stage';
-import { SORTS } from './types';
+import { STAGES } from './stage.js';
+import { SORTS } from './types.js';
 
-export * from './types';
+export * from './types.js';
 
 const score = z.number().int().min(1).max(10);
 const tagName = z.string().trim().min(1).max(32).regex(/^[^\s#＃]+$/, '标签不能包含空格或 #');

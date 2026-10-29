@@ -1,4 +1,4 @@
-import type { Db } from './db';
+import type { Db } from './db.js';
 
 // Workers caps PBKDF2 at 100k iterations; the hash records its own count so this can change later.
 export const PBKDF2_ITERATIONS = 100_000;

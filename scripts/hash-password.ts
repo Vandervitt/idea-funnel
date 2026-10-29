@@ -2,7 +2,7 @@
 // Reads from stdin without echo so the password never lands in shell history.
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import { hashPassword } from '../src/server/auth';
+import { hashPassword } from '../src/server/auth.js';
 
 const muted = new Writable({ write: (_chunk, _enc, cb) => cb() });
 const rl = createInterface({ input: process.stdin, output: muted, terminal: true });

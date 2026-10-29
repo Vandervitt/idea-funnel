@@ -1,6 +1,6 @@
 // Cloudflare Workers entry. Static assets are served by Workers Assets; only /api/* reaches this code.
-import { createApp } from '../server/app';
-import { createNeonDb, type Db } from '../server/db';
+import { createApp } from '../server/app.js';
+import { createNeonDb, type Db } from '../server/db.js';
 
 interface Env {
   DATABASE_URL: string;

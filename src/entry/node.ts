@@ -2,10 +2,10 @@
 import { existsSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
-import { createApp } from '../server/app';
-import { hashPassword } from '../server/auth';
-import { createNeonDb, type Db } from '../server/db';
-import { createPgliteDb } from '../server/pglite';
+import { createApp } from '../server/app.js';
+import { hashPassword } from '../server/auth.js';
+import { createNeonDb, type Db } from '../server/db.js';
+import { createPgliteDb } from '../server/pglite.js';
 
 if (existsSync('.env.local')) process.loadEnvFile('.env.local');
 

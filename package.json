@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "hash-password": "tsx scripts/hash-password.ts"
+    "hash-password": "tsx scripts/hash-password.ts",
+    "verify:vercel": "rm -rf .data/vercel-check && tsc -p tsconfig.json --noEmit false --outDir .data/vercel-check && node scripts/verify-vercel-function.mjs .data/vercel-check"
   },
   "type": "module",
   "dependencies": {

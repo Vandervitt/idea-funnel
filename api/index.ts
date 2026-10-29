@@ -1,7 +1,7 @@
 // Vercel Functions entry. vercel.json rewrites /api/* here; the SPA is served from dist/.
 import { handle } from 'hono/vercel';
-import { createApp } from '../src/server/app';
-import { createNeonDb, type Db } from '../src/server/db';
+import { createApp } from '../src/server/app.js';
+import { createNeonDb, type Db } from '../src/server/db.js';
 
 let db: Promise<Db> | undefined;
 

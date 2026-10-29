@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { iceScoreX10, formatIce, truncateRate } from './ice';
-import { checkTransition, STAGES } from './stage';
-import { parseCapture } from './capture';
+import { iceScoreX10, formatIce, truncateRate } from './ice.js';
+import { checkTransition, STAGES } from './stage.js';
+import { parseCapture } from './capture.js';
 
 describe('ICE score', () => {
   it('truncates instead of rounding', () => {

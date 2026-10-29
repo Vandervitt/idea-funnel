@@ -2,7 +2,7 @@
 import { mkdir, readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
-import type { Db } from './db';
+import type { Db } from './db.js';
 
 const MIGRATIONS = ['20261029_init.sql'];
 

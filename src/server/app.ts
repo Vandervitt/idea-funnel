@@ -5,8 +5,8 @@ import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import type { Db } from './db';
-import { createRepo, TransitionError } from './repo';
+import type { Db } from './db.js';
+import { createRepo, TransitionError } from './repo.js';
 import {
   createLoginLimiter,
   signSession,
@@ -14,8 +14,8 @@ import {
   verifySession,
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
-} from './auth';
-import { createIdeaInput, listQuery, noteInput, stageInput, updateIdeaInput } from '../shared/schema';
+} from './auth.js';
+import { createIdeaInput, listQuery, noteInput, stageInput, updateIdeaInput } from '../shared/schema.js';
 
 export interface AppConfig {
   passwordHash: string;

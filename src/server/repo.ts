@@ -1,7 +1,7 @@
-import type { Db, Statement } from './db';
-import type { CreateIdeaInput, Idea, IdeaEvent, IdeaPage, ListQuery, BoardColumn, Stats, UpdateIdeaInput } from '../shared/schema';
-import { BACKLOG_DAYS } from '../shared/schema';
-import { STAGES, CLOSED_STAGES, checkTransition, type Stage, type TransitionNeed } from '../shared/stage';
+import type { Db, Statement } from './db.js';
+import type { CreateIdeaInput, Idea, IdeaEvent, IdeaPage, ListQuery, BoardColumn, Stats, UpdateIdeaInput } from '../shared/schema.js';
+import { BACKLOG_DAYS } from '../shared/schema.js';
+import { STAGES, CLOSED_STAGES, checkTransition, type Stage, type TransitionNeed } from '../shared/stage.js';
 
 const BOARD_COLUMN_LIMIT = 50;
 
