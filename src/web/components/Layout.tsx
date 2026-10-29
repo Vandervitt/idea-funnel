@@ -9,6 +9,7 @@ const NAV = [
   { to: '/', label: '看板', icon: 'board' },
   { to: '/list', label: '列表', icon: 'list' },
   { to: '/review', label: '每周筛选', icon: 'funnel' },
+  { to: '/insights', label: '概览', icon: 'chart' },
   { to: '/settings', label: '设置', icon: 'settings' },
 ] as const;
 
@@ -44,7 +45,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <nav aria-label="底部导航" className="md:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-4 px-2 pt-1.5 pb-[max(10px,env(safe-area-inset-bottom))] border-t border-line bg-nav">
+      <nav aria-label="底部导航" className="md:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 px-2 pt-1.5 pb-[max(10px,env(safe-area-inset-bottom))] border-t border-line bg-nav">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end
             className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 min-h-12 text-[11px] no-underline ${isActive ? 'text-accent-ink font-medium' : 'text-muted'}`}>

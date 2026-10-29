@@ -173,3 +173,76 @@ test('mobile: no horizontal scroll, stage tabs and capture work', async ({ page 
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: '.playwright/mvp-20261029/mobile-board.png', fullPage: true });
 });
+
+test('insights: counts follow new ideas, rows link to the list, weekly table', async ({ page }) => {
+  await login(page);
+  await page.getByRole('link', { name: '概览' }).first().click();
+  await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible();
+  const inbox = page.getByTestId('stage-count-inbox');
+  const before = Number(await inbox.textContent());
+  const weekRows = page.getByRole('table').getByRole('row');
+  await page.getByText('查看数据表').click();
+  const thisWeek = () => weekRows.last().getByRole('cell').first();
+  const createdBefore = Number(await thisWeek().textContent());
+
+  await capture(page, `概览计数 ${uid()}`);
+  await expect(inbox).toHaveText(String(before + 1));
+  await expect(page.getByTestId('reached-inbox')).not.toHaveText('0');
+  await expect(thisWeek()).toHaveText(String(createdBefore + 1));
+  await expect(page.getByRole('list', { name: '图例' })).toContainText('新增');
+
+  await page.getByRole('region', { name: '各阶段数量' }).getByRole('link', { name: `收集箱 ${before + 1} 条` }).click();
+  await expect(page).toHaveURL(/\/list\?stage=inbox/);
+  await expect(page.getByRole('button', { name: '收集箱', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('batch import: preview flags bad lines, imports the rest into the inbox', async ({ page }) => {
+  await login(page);
+  await page.goto('/settings');
+  const tag = `批量${uid()}`;
+  await page.getByLabel(/每行一条想法/).fill(`批量甲 #${tag}\n\n批量乙 #${tag} #工具\n#只有标签`);
+  const preview = page.getByRole('region', { name: '导入预览' });
+  await expect(preview).toContainText('将会导入 2 条，1 行无法导入');
+  await expect(preview).toContainText('第 4 行：没有标题');
+  await expect(preview.getByText(`#${tag}`)).toHaveCount(2);
+  await page.getByRole('button', { name: '导入 2 条' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '已导入到收集箱：新增 2 条' })).toBeVisible();
+  await expect(page.getByLabel(/每行一条想法/)).toHaveValue('');
+
+  await page.goto(`/list?tags=${encodeURIComponent(tag)}&stage=inbox`);
+  await expect(page.getByRole('link', { name: /批量甲/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /批量乙/ })).toBeVisible();
+});
+
+test('export JSON and import it back: existing ideas are skipped, new ones restored', async ({ page }, testInfo) => {
+  await login(page);
+  await page.goto('/settings');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: '导出 JSON' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^idea-funnel-\d{8}\.json$/);
+  const file = JSON.parse(await (await import('node:fs/promises')).readFile((await download.path())!, 'utf8'));
+  expect(file.ideas.length).toBeGreaterThan(0);
+
+  const input = page.getByLabel('选择导出文件');
+  await input.setInputFiles({ name: 'same.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(file)) });
+  await expect(page.getByRole('status').filter({ hasText: `导入完成：新增 0 条，跳过 ${file.ideas.length} 条（库里已有）` })).toBeVisible();
+
+  const restoredTitle = `从备份恢复 ${uid()}`;
+  const restored = { ...file.ideas[0], id: crypto.randomUUID(), title: restoredTitle, events: [] };
+  const path = testInfo.outputPath('restore.json');
+  await (await import('node:fs/promises')).writeFile(path, JSON.stringify({ ...file, ideas: [restored] }));
+  await input.setInputFiles(path);
+  await expect(page.getByRole('status').filter({ hasText: '导入完成：新增 1 条' })).toBeVisible();
+  await page.goto('/list');
+  await page.getByRole('searchbox', { name: '搜索标题和描述' }).fill(restoredTitle);
+  await expect(page.getByRole('link', { name: new RegExp(restoredTitle) })).toBeVisible();
+});
+
+test('mobile: insights fits the screen', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await login(page);
+  await page.getByRole('navigation', { name: '底部导航' }).getByRole('link', { name: '概览' }).click();
+  await expect(page.getByRole('heading', { name: '最近 12 周' })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: '.playwright/mvp-20261029/mobile-insights.png', fullPage: true });
+});

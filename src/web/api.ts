@@ -1,5 +1,5 @@
 import { QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BoardColumn, Idea, IdeaEvent, IdeaPage, Stats, Sort } from '../shared/types';
+import type { BoardColumn, ImportResult, Idea, IdeaEvent, IdeaPage, Insights, Stats, Sort } from '../shared/types';
 import type { UpdateIdeaInput, StageInput } from '../shared/schema';
 import type { Stage } from '../shared/stage';
 
@@ -89,7 +89,7 @@ export const useTags = () =>
 function useInvalidateIdeas() {
   const qc = useQueryClient();
   return (id?: string) => {
-    for (const key of ['board', 'ideas', 'stats', 'tags']) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ['board', 'ideas', 'stats', 'tags', 'insights']) qc.invalidateQueries({ queryKey: [key] });
     if (id) {
       qc.invalidateQueries({ queryKey: ['idea', id] });
       qc.invalidateQueries({ queryKey: ['events', id] });
@@ -175,5 +175,22 @@ export function useDeleteNote(id: string) {
   return useMutation({
     mutationFn: (eventId: string) => api<void>(`/ideas/${id}/events/${eventId}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events', id] }),
+  });
+}
+
+/** The viewer's time zone decides where a week starts and ends. */
+const timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+export const useInsights = () =>
+  useQuery({ queryKey: ['insights'], queryFn: () => api<Insights>(`/insights${qs({ tz: timeZone() })}`) });
+
+export function useImport() {
+  const invalidate = useInvalidateIdeas();
+  return useMutation({
+    mutationFn: (req: { kind: 'json'; file: unknown } | { kind: 'lines'; items: { title: string; tags: string[] }[] }) =>
+      req.kind === 'json'
+        ? api<ImportResult>('/import/json', { body: req.file })
+        : api<ImportResult>('/import/lines', { body: { items: req.items } }),
+    onSuccess: () => invalidate(),
   });
 }

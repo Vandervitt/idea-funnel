@@ -21,6 +21,8 @@
   --color-danger-soft: var(--danger-soft);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
   --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 }
@@ -46,6 +48,9 @@
   --danger-soft: #fbeae8;
   --ok: #1f7a4d;
   --ok-soft: #e3f1e9;
+  /* Chart series (validated for CVD separation and contrast against --surface). */
+  --series-1: #2f4fd8;
+  --series-2: #d06a1a;
   color-scheme: light;
 }
 
@@ -71,6 +76,8 @@
     --danger-soft: #3b1f1c;
     --ok: #6cc596;
     --ok-soft: #1b3226;
+    --series-1: #5b74e6;
+    --series-2: #d27a1e;
     color-scheme: dark;
   }
 }

@@ -8,6 +8,7 @@ import { StageMoverProvider } from './components/StageMover';
 import { Layout } from './components/Layout';
 import { BoardPage } from './pages/BoardPage';
 import { ListPage } from './pages/ListPage';
+import { InsightsPage } from './pages/InsightsPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { LoginPage } from './pages/LoginPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
               <Route index element={<BoardPage />} />
               <Route path="list" element={<ListPage />} />
               <Route path="review" element={<ReviewPage />} />
+              <Route path="insights" element={<InsightsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
