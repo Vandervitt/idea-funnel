@@ -130,13 +130,15 @@ test('weekly review: advance, drop with reason, skip, then summary', async ({ pa
   // Empty the inbox left by earlier tests (advancing, since skipped ideas stay) so the queue is predictable.
   await page.goto('/review');
   const finished = page.getByRole('heading', { name: /筛选完成|收集箱是空的/ });
-  await expect(finished.or(page.getByRole('progressbar'))).toBeVisible();
+  const progressbar = page.getByRole('progressbar');
+  // Non-waiting read: after the last advance the bar is replaced by the summary, and
+  // getAttribute() would wait for it forever.
+  const progress = () => progressbar.evaluateAll((els) => els[0]?.getAttribute('aria-valuenow') ?? null);
+  await expect(finished.or(progressbar)).toBeVisible();
   while (!(await finished.isVisible())) {
-    const before = await page.getByRole('progressbar').getAttribute('aria-valuenow');
+    const before = await progress();
     await page.getByRole('button', { name: /推进到评估中/ }).click();
-    await expect(async () => {
-      expect((await finished.isVisible()) || (await page.getByRole('progressbar').getAttribute('aria-valuenow')) !== before).toBe(true);
-    }).toPass();
+    await expect.poll(progress).not.toBe(before);
   }
   for (const t of ['筛选 A', '筛选 B', '筛选 C']) await capture(page, `${t} ${uid()}`);
   await page.goto('/list');
