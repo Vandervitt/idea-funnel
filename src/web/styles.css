@@ -150,12 +150,15 @@
   color: var(--accent-ink);
 }
 
-html, body { background: var(--bg); color: var(--ink); }
-body { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-::selection { background: var(--accent-soft); color: var(--accent-ink); }
-dialog::backdrop { background: rgb(14 20 16 / 0.5); }
-input[type="range"], input[type="checkbox"] { accent-color: var(--ink); }
+/* In the base layer so utilities win: inputs marked `outline-none` show focus on their own frame instead. */
+@layer base {
+  html, body { background: var(--bg); color: var(--ink); }
+  body { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+  dialog::backdrop { background: rgb(14 20 16 / 0.5); }
+  input[type="range"], input[type="checkbox"] { accent-color: var(--ink); }
+}
 
 .prose-idea { line-height: 1.7; overflow-wrap: anywhere; }
 .prose-idea p { margin: 0 0 0.6em; }
