@@ -5,7 +5,7 @@ import type { Insights } from '../../shared/types';
 import { Icon, STAGE_DOT } from '../components/ui';
 import { STALL_DAYS } from '../../shared/types';
 
-const card = 'flex flex-col gap-4 p-5 rounded-lg bg-surface border border-line';
+const card = 'flex flex-col gap-4 p-5 rounded-2xl bg-surface border border-line';
 
 export function InsightsPage() {
   const { data, isLoading, isError } = useInsights();
@@ -51,7 +51,7 @@ function Metrics({ metrics }: { metrics: Insights['metrics'] }) {
       <h2 id="metrics-title" className="sr-only">成功指标</h2>
       <ul className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {tiles.map((t) => (
-          <li key={t.label} className={`flex flex-col gap-1.5 p-4 rounded-lg bg-surface border border-line border-t-4 ${t.ok ? 'border-t-ok' : 'border-t-warn'}`} aria-label={`${t.label} ${t.value}，${t.ok ? '达标' : '需要关注'}`}>
+          <li key={t.label} className={`flex flex-col gap-1.5 p-4 rounded-2xl bg-surface border border-line border-t-4 ${t.ok ? 'border-t-ok' : 'border-t-warn'}`} aria-label={`${t.label} ${t.value}，${t.ok ? '达标' : '需要关注'}`}>
             <span className="text-[13px] text-ink-2">{t.label}</span>
             <span className="num text-[30px] leading-tight font-bold" data-testid={`metric-${t.label}`}>{t.value}</span>
             <span className={`inline-flex items-center gap-1 self-start px-2 rounded-md text-xs font-medium leading-5 ${t.ok ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn-ink'}`}>

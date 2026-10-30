@@ -38,93 +38,95 @@
   --color-stage-building: var(--stage-building);
   --color-stage-shipped: var(--stage-shipped);
   --color-stage-dropped: var(--stage-dropped);
-  --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  /* Latin display face: wordmark, page titles and every number. CJK falls through to the sans stack. */
-  --font-display: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  /* Titles and numbers: SF Pro Display on Apple devices, the system UI face elsewhere. */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 }
 
-/* Pencil and highlighter: graphite ink on sage paper, one marigold highlighter for what matters. */
+/* Black and white, as on apple.com: near-black ink on light grey and white. Colour is kept for status only. */
 :root {
-  --bg: #e8ebe3;
-  --nav: #f3f5ef;
-  --surface: #fbfbf7;
-  --sunken: #dfe3d8;
-  --chip: #e9ece4;
-  --line: #d3d8cc;
-  --line-strong: #b9c0b3;
-  --ink: #17211c;
-  --ink-2: #33403a;
-  --muted: #56625b;
-  --accent: #17211c;
-  --accent-ink: #3b2f05;
-  --accent-soft: #f1d77a;
-  --on-accent: #fbfbf7;
-  --warn: #a14b0c;
-  --warn-ink: #6b3107;
-  --warn-soft: #f5e4cf;
+  --bg: #f5f5f7;
+  --nav: #fbfbfd;
+  --surface: #ffffff;
+  --sunken: #ececf0;
+  --chip: #f0f0f3;
+  --line: #e3e3e8;
+  --line-strong: #d2d2d7;
+  --ink: #1d1d1f;
+  --ink-2: #424245;
+  --muted: #636366;
+  --accent: #1d1d1f;
+  --accent-ink: #1d1d1f;
+  --accent-soft: #e8e8ed;
+  --on-accent: #ffffff;
+  --warn: #b25000;
+  --warn-ink: #7a3700;
+  --warn-soft: #fbeedd;
   --on-warn: #ffffff;
-  --danger: #a3302a;
-  --danger-soft: #f4e0db;
+  --danger: #c4251c;
+  --danger-soft: #fbe7e5;
   --on-danger: #ffffff;
-  --ok: #24704a;
-  --ok-soft: #d9eadb;
-  /* Chart series (≥ 3:1 against --surface, separable without hue). */
-  --series-1: #2b3a33;
-  --series-2: #b56f0e;
-  --rail: #18221d;
-  --rail-ink: #e6ebe2;
-  --rail-muted: #9aa79e;
-  --rail-hover: #24312a;
-  --rail-mark: #f1d77a;
-  --rail-mark-ink: #3b2f05;
-  /* The funnel, left to right: grey → slate → amber → green, closed stages quieter. */
-  --stage-inbox: #8a938c;
-  --stage-evaluating: #48699e;
-  --stage-validating: #c4831a;
-  --stage-building: #2f7d57;
-  --stage-shipped: #1d5a3f;
-  --stage-dropped: #a3a9a3;
+  --ok: #1e7a3c;
+  --ok-soft: #e3f2e6;
+  /* Chart series (≥ 3:1 against --surface, told apart by lightness). */
+  --series-1: #1d1d1f;
+  --series-2: #8e8e93;
+  --rail: rgb(251 251 253 / 0.8);
+  --rail-ink: #1d1d1f;
+  --rail-muted: #636366;
+  --rail-hover: #e8e8ed;
+  --rail-mark: #1d1d1f;
+  --rail-mark-ink: #ffffff;
+  /* The funnel, left to right: light grey deepening to black; dropped fades out. */
+  --stage-inbox: #aeaeb2;
+  --stage-evaluating: #8e8e93;
+  --stage-validating: #636366;
+  --stage-building: #3a3a3c;
+  --stage-shipped: #1d1d1f;
+  --stage-dropped: #d2d2d7;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131915;
-    --nav: #171e19;
-    --surface: #1d2520;
-    --sunken: #171e1a;
-    --chip: #27302a;
-    --line: #2e3831;
-    --line-strong: #435047;
-    --ink: #e6ebe2;
-    --ink-2: #ccd4c9;
-    --muted: #9eaaa1;
-    --accent: #e6ebe2;
-    --accent-ink: #f6e3a1;
-    --accent-soft: #4a3f17;
-    --on-accent: #131915;
-    --warn: #e39257;
-    --warn-ink: #f3c7a6;
-    --warn-soft: #3a2616;
-    --on-warn: #1d130b;
-    --danger: #ef8b7f;
-    --danger-soft: #3c201c;
-    --on-danger: #23110f;
-    --ok: #74c79a;
-    --ok-soft: #1a3325;
-    --series-1: #c3cec5;
-    --series-2: #e0a03a;
-    --rail: #0e1310;
-    --rail-ink: #e6ebe2;
-    --rail-muted: #8f9b93;
-    --rail-hover: #1b231e;
-    --stage-inbox: #87918a;
-    --stage-evaluating: #7d9dd4;
-    --stage-validating: #e0a03a;
-    --stage-building: #5fbf8c;
-    --stage-shipped: #4fa77a;
-    --stage-dropped: #6b746d;
+    --bg: #000000;
+    --nav: #161617;
+    --surface: #1d1d1f;
+    --sunken: #111112;
+    --chip: #2c2c2e;
+    --line: #2f2f32;
+    --line-strong: #48484a;
+    --ink: #f5f5f7;
+    --ink-2: #d2d2d7;
+    --muted: #a1a1a6;
+    --accent: #f5f5f7;
+    --accent-ink: #f5f5f7;
+    --accent-soft: #3a3a3c;
+    --on-accent: #000000;
+    --warn: #ff9f0a;
+    --warn-ink: #ffc978;
+    --warn-soft: #3a2a12;
+    --on-warn: #000000;
+    --danger: #ff6961;
+    --danger-soft: #3d1a18;
+    --on-danger: #000000;
+    --ok: #30d158;
+    --ok-soft: #12301b;
+    --series-1: #f5f5f7;
+    --series-2: #8e8e93;
+    --rail: rgb(22 22 23 / 0.8);
+    --rail-ink: #f5f5f7;
+    --rail-muted: #a1a1a6;
+    --rail-hover: #2c2c2e;
+    --rail-mark: #f5f5f7;
+    --rail-mark-ink: #000000;
+    --stage-inbox: #636366;
+    --stage-evaluating: #8e8e93;
+    --stage-validating: #aeaeb2;
+    --stage-building: #d1d1d6;
+    --stage-shipped: #f5f5f7;
+    --stage-dropped: #48484a;
     color-scheme: dark;
   }
 }
@@ -140,14 +142,15 @@
   font-family: var(--font-display);
   font-size: 28px;
   line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
-/* A marker stroke behind the text, a little shorter than the line box. */
+/* Scores sit on a quiet grey plate. */
 @utility highlight {
-  background-image: linear-gradient(transparent 12%, var(--accent-soft) 12%, var(--accent-soft) 90%, transparent 90%);
+  background-color: var(--accent-soft);
   color: var(--accent-ink);
+  border-radius: 6px;
 }
 
 /* In the base layer so utilities win: inputs marked `outline-none` show focus on their own frame instead. */
@@ -156,7 +159,7 @@
   body { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   ::selection { background: var(--accent-soft); color: var(--accent-ink); }
-  dialog::backdrop { background: rgb(14 20 16 / 0.5); }
+  dialog::backdrop { background: rgb(0 0 0 / 0.4); }
   input[type="range"], input[type="checkbox"] { accent-color: var(--ink); }
 }
 
@@ -165,6 +168,6 @@
 .prose-idea ul, .prose-idea ol { margin: 0 0 0.6em; padding-left: 1.4em; }
 .prose-idea ul { list-style: disc; }
 .prose-idea ol { list-style: decimal; }
-.prose-idea a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.prose-idea a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
 .prose-idea code { font-family: var(--font-mono); background: var(--chip); padding: 0 4px; border-radius: 4px; }
 .prose-idea h1, .prose-idea h2, .prose-idea h3 { font-weight: 700; margin: 0.6em 0 0.3em; }

@@ -22,12 +22,12 @@ export const STAGE_EDGE: Record<Stage, string> = {
 
 export const btn = {
   primary:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-accent text-on-accent font-medium shadow-[inset_0_-2px_0_rgb(0_0_0/0.25)] hover:opacity-90 disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-full bg-accent text-on-accent font-medium hover:opacity-85 disabled:opacity-50 cursor-pointer',
   secondary:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg border border-line-strong bg-surface text-ink-2 hover:border-ink-2 hover:text-ink disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-full border border-line-strong bg-surface text-ink hover:border-ink disabled:opacity-50 cursor-pointer',
   ghost: 'inline-flex items-center justify-center gap-2 min-h-10 px-3 rounded-lg text-ink-2 hover:bg-chip cursor-pointer',
   danger:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-danger text-on-danger font-medium hover:opacity-90 disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-full bg-danger text-on-danger font-medium hover:opacity-85 disabled:opacity-50 cursor-pointer',
 };
 
 export const input =
@@ -97,7 +97,7 @@ export function Dialog({ open, onClose, labelledBy, children, className = '' }: 
   return (
     <dialog ref={ref} aria-labelledby={labelledBy} onClose={onClose}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
-      className={`m-auto w-[min(520px,calc(100vw-32px))] rounded-xl bg-surface text-ink p-6 border border-line shadow-2xl ${className}`}>
+      className={`m-auto w-[min(520px,calc(100vw-32px))] rounded-2xl bg-surface text-ink p-6 border border-line shadow-2xl ${className}`}>
       {open && children}
     </dialog>
   );

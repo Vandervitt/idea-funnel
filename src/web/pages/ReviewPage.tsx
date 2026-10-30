@@ -120,7 +120,7 @@ export function ReviewPage() {
 
       <span className="text-muted">收集箱 · 从最早的开始{cursor ? ' · 下一批' : ''}</span>
 
-      <article aria-labelledby="review-title" className="w-full max-w-[640px] flex flex-col gap-4 p-6 sm:p-9 rounded-md bg-surface border border-line shadow-[0_1px_0_var(--line-strong),6px_6px_0_-1px_var(--surface),6px_6px_0_0_var(--line-strong),0_24px_48px_-32px_rgb(23_33_28/0.45)]">
+      <article aria-labelledby="review-title" className="w-full max-w-[640px] flex flex-col gap-4 p-6 sm:p-9 rounded-2xl bg-surface border border-line shadow-[0_24px_48px_-32px_rgb(0_0_0/0.3)]">
         <div className="flex flex-wrap items-center gap-2">
           <span className={`px-2 rounded-[4px] text-xs font-medium leading-6 ${isBacklog(current!.createdAt) ? 'bg-warn-soft text-warn-ink' : 'bg-chip text-ink-2'}`}>
             {relativeAge(current!.createdAt)}前记录
@@ -160,7 +160,7 @@ function ActionButton({ label, kbd, onClick, disabled, tone }: {
     tone === 'primary' ? 'bg-accent text-on-accent hover:opacity-90' : tone === 'danger' ? 'bg-surface border border-line-strong text-danger hover:border-danger' : 'bg-surface border border-line-strong text-ink hover:border-ink-2';
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className={`flex flex-col items-center justify-center gap-1.5 min-h-20 rounded-lg font-medium cursor-pointer disabled:opacity-60 ${style}`}>
+      className={`flex flex-col items-center justify-center gap-1.5 min-h-20 rounded-2xl font-medium cursor-pointer disabled:opacity-60 ${style}`}>
       {label}
       <span className="opacity-70"><Kbd>{kbd}</Kbd></span>
     </button>
@@ -203,14 +203,14 @@ function Summary({ results, state, onNextBatch }: {
       </div>
       <div className="w-full max-w-[640px] grid grid-cols-3 gap-3">
         {([['推进', 'advanced', 'text-ink'], ['放弃', 'dropped', 'text-danger'], ['跳过', 'skipped', 'text-muted']] as const).map(([label, o, tone]) => (
-          <div key={o} className="flex flex-col gap-1 p-4 rounded-lg bg-surface border border-line">
+          <div key={o} className="flex flex-col gap-1 p-4 rounded-2xl bg-surface border border-line">
             <span className="text-muted">{label}</span>
             <span className={`num text-4xl font-bold ${tone}`} data-testid={`summary-${o}`}>{count(o)}</span>
           </div>
         ))}
       </div>
       {results.length > 0 && (
-        <ul className="w-full max-w-[640px] px-5 py-1.5 rounded-lg bg-surface border border-line">
+        <ul className="w-full max-w-[640px] px-5 py-1.5 rounded-2xl bg-surface border border-line">
           {results.map((r) => (
             <li key={r.idea.id} className="flex flex-wrap items-center gap-2.5 py-3.5 border-t border-line first:border-t-0">
               <span className="flex-[1_1_240px] font-medium">{r.idea.title}</span>

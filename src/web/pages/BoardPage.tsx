@@ -134,7 +134,7 @@ function Column({ column, onFold }: { column: BoardColumn; onFold?: () => void }
   const { setNodeRef, isOver } = useDroppable({ id: column.stage });
   return (
     <section ref={setNodeRef} aria-label={STAGE_LABELS[column.stage]}
-      className={`flex-[1_0_236px] flex flex-col gap-2 p-2.5 pt-3 rounded-b-lg rounded-t-sm border-t-4 ${STAGE_EDGE[column.stage]} bg-sunken min-h-40 transition-shadow ${isOver ? 'ring-2 ring-ink' : ''}`}>
+      className={`flex-[1_0_236px] flex flex-col gap-2 p-2.5 pt-3 rounded-b-2xl rounded-t-sm border-t-[3px] ${STAGE_EDGE[column.stage]} bg-sunken min-h-40 transition-shadow ${isOver ? 'ring-2 ring-ink' : ''}`}>
       <header className="flex items-baseline gap-2 px-1.5 pb-1">
         <h2 className="font-bold">{STAGE_LABELS[column.stage]}</h2>
         <span className="num text-[13px] text-muted">{column.count}</span>
@@ -152,7 +152,7 @@ function FoldedColumn({ column, onExpand }: { column: BoardColumn; onExpand: () 
   const { setNodeRef, isOver } = useDroppable({ id: column.stage });
   return (
     <section ref={setNodeRef} aria-label={`${STAGE_LABELS[column.stage]}（已折叠）`}
-      className={`flex-[0_0_52px] min-h-64 py-3.5 rounded-b-lg rounded-t-sm border-t-4 ${STAGE_EDGE[column.stage]} bg-sunken/60 flex flex-col items-center gap-2.5 ${isOver ? 'ring-2 ring-ink' : ''}`}>
+      className={`flex-[0_0_52px] min-h-64 py-3.5 rounded-b-2xl rounded-t-sm border-t-[3px] ${STAGE_EDGE[column.stage]} bg-sunken/60 flex flex-col items-center gap-2.5 ${isOver ? 'ring-2 ring-ink' : ''}`}>
       <span className="[writing-mode:vertical-rl] font-bold tracking-widest text-ink-2">{STAGE_LABELS[column.stage]}</span>
       <span className="num text-[13px] text-muted">{column.count}</span>
       <button type="button" onClick={onExpand} aria-label={`展开${STAGE_LABELS[column.stage]}`}
@@ -186,7 +186,7 @@ function CardBody({ idea, lifted }: { idea: Idea; lifted?: boolean }) {
   const stale = idea.stage === 'inbox' && isBacklog(idea.createdAt);
   const stalled = isStalled(idea);
   return (
-    <div className={`flex flex-col gap-2.5 px-3.5 py-3 rounded-md bg-surface border border-line hover:border-ink-2/40 ${lifted ? 'shadow-xl rotate-[1.5deg]' : 'shadow-[0_1px_0_var(--line-strong)]'}`}>
+    <div className={`flex flex-col gap-2.5 px-3.5 py-3 rounded-xl bg-surface border border-line hover:border-line-strong ${lifted ? 'shadow-xl rotate-[1.5deg]' : 'shadow-[0_1px_3px_rgb(0_0_0/0.06)]'}`}>
       <span className="font-medium text-[15px] leading-snug break-words">{idea.title}</span>
       {idea.tags.length > 0 && <span className="flex flex-wrap gap-1.5">{idea.tags.map((t) => <TagChip key={t} name={t} />)}</span>}
       <span className="flex items-center gap-2 text-xs">

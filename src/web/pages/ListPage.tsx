@@ -44,7 +44,7 @@ export function ListPage() {
         {data && <span className="text-muted">已加载 {items.length} 条{hasNextPage ? '，还有更多' : ''}</span>}
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-3.5 rounded-lg bg-surface border border-line">
+      <div className="flex flex-col gap-3 px-4 py-3.5 rounded-2xl bg-surface border border-line">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex-[1_1_280px] flex items-center gap-2 h-10 px-3 rounded-lg border border-line-strong focus-within:border-ink">
             <Icon name="search" size={16} className="text-muted" />
@@ -91,7 +91,7 @@ export function ListPage() {
       {data && (items.length === 0 ? (
         <p className="py-12 text-center text-muted">{hasFilters ? '没有符合条件的想法' : '还没有想法，在上面的输入框记下第一个吧'}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full min-w-[720px] border-collapse">
             <thead>
               <tr className="text-left text-xs text-muted border-b border-line-strong">

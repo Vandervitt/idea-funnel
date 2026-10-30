@@ -6,7 +6,7 @@ import { parseBatch } from '../../shared/capture';
 import type { ImportResult } from '../../shared/types';
 import { Dialog, TagChip, btn, input, useToast } from '../components/ui';
 
-const section = 'flex flex-col gap-3 p-5 rounded-lg bg-surface border border-line';
+const section = 'flex flex-col gap-3 p-5 rounded-2xl bg-surface border border-line';
 const PREVIEW_ROWS = 50;
 
 const summary = (r: ImportResult) => `新增 ${r.inserted} 条${r.skipped ? `，跳过 ${r.skipped} 条（库里已有）` : ''}`;

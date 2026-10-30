@@ -20,15 +20,15 @@ export function Layout() {
   const { data: stats } = useStats();
   return (
     <div className="min-h-dvh md:flex">
-      <nav aria-label="主导航" className="hidden md:flex w-56 shrink-0 flex-col gap-0.5 px-3 py-6 bg-rail text-rail-ink sticky top-0 h-dvh">
+      <nav aria-label="主导航" className="hidden md:flex w-56 shrink-0 flex-col gap-0.5 px-3 py-6 bg-rail backdrop-blur-xl border-r border-line text-rail-ink sticky top-0 h-dvh">
         <div className="flex items-center gap-2.5 px-3 pb-7">
           <Icon name="funnel" size={22} className="text-rail-mark" />
-          <span className="font-display font-extrabold text-[19px] tracking-tight">Idea Funnel</span>
+          <span className="font-display font-semibold text-[19px] tracking-tight">Idea Funnel</span>
         </div>
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end
             className={({ isActive }) =>
-              `flex items-center gap-2.5 min-h-10 px-3 rounded-md no-underline ${isActive ? 'bg-rail-hover text-rail-ink font-medium shadow-[inset_3px_0_0_var(--rail-mark)]' : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink'}`}>
+              `flex items-center gap-2.5 min-h-10 px-3 rounded-lg no-underline ${isActive ? 'bg-rail-hover text-rail-ink font-semibold' : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink'}`}>
             <Icon name={n.icon} />
             {n.label}
             {n.to === '/review' && !!stats?.inbox && (
@@ -45,10 +45,10 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <nav aria-label="底部导航" className="md:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 px-2 pt-1.5 pb-[max(10px,env(safe-area-inset-bottom))] bg-rail">
+      <nav aria-label="底部导航" className="md:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 px-2 pt-1.5 pb-[max(10px,env(safe-area-inset-bottom))] bg-rail backdrop-blur-xl border-t border-line">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end
-            className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 min-h-12 text-[11px] no-underline ${isActive ? 'text-rail-mark font-medium' : 'text-rail-muted'}`}>
+            className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 min-h-12 text-[11px] no-underline ${isActive ? 'text-rail-ink font-semibold' : 'text-rail-muted'}`}>
             <Icon name={n.icon} size={20} />
             {n.to === '/review' ? '筛选' : n.label}
           </NavLink>
@@ -106,7 +106,7 @@ function CaptureBar() {
   return (
     <div className="flex flex-col gap-2">
       <form aria-label="快速记录" onSubmit={(e) => { e.preventDefault(); submit(); }}
-        className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-surface border border-line-strong rounded-xl shadow-[0_1px_0_var(--line-strong),0_8px_24px_-16px_rgb(23_33_28/0.35)] focus-within:border-ink">
+        className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-surface border border-line-strong rounded-2xl shadow-[0_8px_24px_-16px_rgb(0_0_0/0.25)] focus-within:border-ink">
         <Icon name="plus" className="text-muted shrink-0" />
         <label htmlFor="capture" className="sr-only">记下一个想法</label>
         <input id="capture" ref={ref} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off"
