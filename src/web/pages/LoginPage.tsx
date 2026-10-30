@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api';
-import { Icon, btn, input } from '../components/ui';
+import { BrandMark, btn, input } from '../components/ui';
 
 export function LoginPage() {
   const [password, setPassword] = useState('');
@@ -38,9 +38,7 @@ export function LoginPage() {
   return (
     <div className="min-h-dvh flex flex-col items-center gap-8 px-4 pt-[16vh] pb-12">
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center justify-center size-11 rounded-[10px] bg-ink text-bg">
-          <Icon name="funnel" size={24} />
-        </span>
+        <BrandMark size={44} />
         <span className="font-display text-[30px] font-semibold tracking-tight">Idea Funnel</span>
       </div>
       <form onSubmit={submit} aria-labelledby="login-title"
