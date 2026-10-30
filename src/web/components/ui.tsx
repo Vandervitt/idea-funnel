@@ -59,6 +59,23 @@ export function Icon({ name, size = 18, className }: { name: keyof typeof ICONS;
   );
 }
 
+// Brand mark: "i" and "f" sitting in the two loops of an infinity sign. Keep in sync with public/favicon.svg.
+const INFINITY = 'M58.5 32L58.39 34.21L58.07 36.36L57.55 38.39L56.85 40.27L55.99 41.93L55.01 43.37L53.92 44.57L52.77 45.52L51.58 46.22L50.36 46.69L49.14 46.94L47.93 46.99L46.75 46.85L45.6 46.56L44.49 46.13L43.42 45.58L42.4 44.93L41.41 44.19L40.47 43.37L39.57 42.49L38.71 41.56L37.88 40.59L37.07 39.58L36.3 38.54L35.55 37.48L34.82 36.41L34.1 35.32L33.39 34.22L32.69 33.11L32 32L31.31 30.89L30.61 29.78L29.9 28.68L29.18 27.59L28.45 26.52L27.7 25.46L26.93 24.42L26.12 23.41L25.29 22.44L24.43 21.51L23.53 20.63L22.59 19.81L21.6 19.07L20.58 18.42L19.51 17.87L18.4 17.44L17.25 17.15L16.07 17.01L14.86 17.06L13.64 17.31L12.42 17.78L11.23 18.48L10.08 19.43L8.99 20.63L8.01 22.07L7.15 23.73L6.45 25.61L5.93 27.64L5.61 29.79L5.5 32L5.61 34.21L5.93 36.36L6.45 38.39L7.15 40.27L8.01 41.93L8.99 43.37L10.08 44.57L11.23 45.52L12.42 46.22L13.64 46.69L14.86 46.94L16.07 46.99L17.25 46.85L18.4 46.56L19.51 46.13L20.58 45.58L21.6 44.93L22.59 44.19L23.53 43.37L24.43 42.49L25.29 41.56L26.12 40.59L26.93 39.58L27.7 38.54L28.45 37.48L29.18 36.41L29.9 35.32L30.61 34.22L31.31 33.11L32 32L32.69 30.89L33.39 29.78L34.1 28.68L34.82 27.59L35.55 26.52L36.3 25.46L37.07 24.42L37.88 23.41L38.71 22.44L39.57 21.51L40.47 20.63L41.41 19.81L42.4 19.07L43.42 18.42L44.49 17.87L45.6 17.44L46.75 17.15L47.93 17.01L49.14 17.06L50.36 17.31L51.58 17.78L52.77 18.48L53.92 19.43L55.01 20.63L55.99 22.07L56.85 23.73L57.55 25.61L58.07 27.64L58.39 29.79Z';
+
+export function BrandMark({ size = 24, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className={className}>
+      <rect width="64" height="64" rx="14" className="fill-ink" />
+      <g fill="none" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="stroke-bg">
+        <path d={INFINITY} />
+        <path d="M16.5 33.18V39.5" />
+        <path d="M51.7 26.7c-1.4-2.2-5.4-2.6-5.4 1.6V39.5M43.3 31.1h6.6" />
+      </g>
+      <circle cx="16.5" cy="27.26" r="2.18" className="fill-bg" />
+    </svg>
+  );
+}
+
 export const TagChip = ({ name, onRemove }: { name: string; onRemove?: () => void }) => (
   <span className="inline-flex items-center gap-1 px-1.5 rounded-[4px] border border-line text-ink-2 text-xs leading-5">
     #{name}

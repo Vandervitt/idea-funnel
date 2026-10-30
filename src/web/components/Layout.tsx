@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useSearchParams } from 'react-router';
 import { useCreateIdea, useStats } from '../api';
 import { parseCapture } from '../../shared/capture';
-import { Icon, Kbd, TagChip, btn, useToast } from './ui';
+import { BrandMark, Icon, Kbd, TagChip, btn, useToast } from './ui';
 import { DetailDrawer } from './DetailDrawer';
 
 const NAV = [
@@ -22,7 +22,7 @@ export function Layout() {
     <div className="min-h-dvh md:flex">
       <nav aria-label="主导航" className="hidden md:flex w-56 shrink-0 flex-col gap-0.5 px-3 py-6 bg-rail backdrop-blur-xl border-r border-line text-rail-ink sticky top-0 h-dvh">
         <div className="flex items-center gap-2.5 px-3 pb-7">
-          <Icon name="funnel" size={22} className="text-rail-mark" />
+          <BrandMark size={28} />
           <span className="font-display font-semibold text-[19px] tracking-tight">Idea Funnel</span>
         </div>
         {NAV.map((n) => (
