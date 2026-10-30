@@ -66,22 +66,22 @@ export function TagFilter({ selected, onChange }: { selected: string[]; onChange
   return (
     <div ref={ref} className="relative">
       <button type="button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)}
-        className={selected.length ? `${btn.secondary} !border-accent !bg-accent-soft !text-accent-ink` : btn.secondary}>
+        className={selected.length ? `${btn.secondary} !border-ink !bg-ink !text-bg` : btn.secondary}>
         {label} ▾
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-56 max-h-72 overflow-y-auto p-2 rounded-xl border border-line bg-surface shadow-xl">
+        <div className="absolute right-0 z-20 mt-1 w-56 max-h-72 overflow-y-auto p-1.5 rounded-lg border border-line-strong bg-surface shadow-xl">
           {!tags?.length && <p className="p-2 text-muted text-xs">还没有标签。记录时用 #标签 即可创建。</p>}
           {tags?.map((t) => (
             <label key={t.name} className="flex items-center gap-2 min-h-9 px-2 rounded-lg hover:bg-chip cursor-pointer">
               <input type="checkbox" checked={selected.includes(t.name)}
                 onChange={(e) => onChange(e.target.checked ? [...selected, t.name] : selected.filter((x) => x !== t.name))} />
               <span className="flex-1">#{t.name}</span>
-              <span className="font-mono text-xs text-muted">{t.count}</span>
+              <span className="num text-xs text-muted">{t.count}</span>
             </label>
           ))}
           {selected.length > 0 && (
-            <button type="button" onClick={() => onChange([])} className="w-full mt-1 min-h-9 text-xs text-accent cursor-pointer">清空</button>
+            <button type="button" onClick={() => onChange([])} className="w-full mt-1 min-h-9 text-xs text-ink-2 underline underline-offset-4 cursor-pointer">清空</button>
           )}
         </div>
       )}

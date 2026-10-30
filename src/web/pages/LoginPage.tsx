@@ -36,13 +36,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center gap-7 px-4 pt-[18vh] pb-12">
-      <div className="flex items-center gap-2.5">
-        <Icon name="funnel" size={30} className="text-accent" />
-        <span className="text-[22px] font-bold">Idea Funnel</span>
+    <div className="min-h-dvh flex flex-col items-center gap-8 px-4 pt-[16vh] pb-12">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center justify-center size-11 rounded-[10px] bg-rail text-rail-mark">
+          <Icon name="funnel" size={24} />
+        </span>
+        <span className="font-display text-[30px] font-extrabold tracking-tight">Idea Funnel</span>
       </div>
       <form onSubmit={submit} aria-labelledby="login-title"
-        className="w-full max-w-[380px] flex flex-col gap-4 p-7 rounded-2xl bg-surface border border-line shadow-md">
+        className="w-full max-w-[380px] flex flex-col gap-4 p-7 rounded-lg bg-surface border border-line shadow-[0_1px_0_var(--line-strong),0_24px_48px_-32px_rgb(23_33_28/0.45)]">
         <h1 id="login-title" className="text-lg font-bold">输入密码继续</h1>
         <label className="flex flex-col gap-1.5 text-ink-2">
           密码

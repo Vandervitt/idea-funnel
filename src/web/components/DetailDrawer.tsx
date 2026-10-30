@@ -30,7 +30,7 @@ export function DetailDrawer() {
   return (
     <dialog ref={ref} aria-label="想法详情" onClose={close} onCancel={(e) => { e.preventDefault(); close(); }}
       onClick={(e) => e.target === ref.current && close()}
-      className="m-0 ml-auto h-dvh max-h-dvh w-full md:w-[640px] max-w-full bg-surface text-ink shadow-2xl p-0">
+      className="m-0 ml-auto h-dvh max-h-dvh w-full md:w-[640px] max-w-full bg-surface text-ink border-l border-line-strong shadow-2xl p-0">
       {id && <DrawerBody key={id} id={id} onClose={close} />}
     </dialog>
   );
@@ -119,7 +119,7 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex flex-wrap items-center gap-2.5 px-6 py-3.5 border-b border-line">
+      <header className="flex flex-wrap items-center gap-2.5 px-6 py-3.5 border-b border-line bg-nav">
         <label className="flex items-center gap-2 text-muted">
           阶段
           <select value={idea.stage} onChange={(e) => mover.move(idea, e.target.value as Stage)}
@@ -138,7 +138,7 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
 
       <div className="flex-1 overflow-y-auto px-6 pt-5 pb-10 flex flex-col gap-6">
         {closed && idea.conclusion && (
-          <div className={`px-4 py-3 rounded-xl ${idea.stage === 'shipped' ? 'bg-ok-soft text-ok' : 'bg-danger-soft text-danger'}`}>
+          <div className={`px-4 py-3 rounded-lg border-l-4 ${idea.stage === 'shipped' ? 'bg-ok-soft text-ok border-ok' : 'bg-danger-soft text-danger border-danger'}`}>
             <span className="font-bold">{idea.stage === 'shipped' ? '已落地' : '已放弃'}：</span>
             {idea.conclusion}
           </div>
@@ -147,7 +147,7 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
         <div className="flex flex-col gap-2.5">
           <label htmlFor="detail-title" className="sr-only">标题</label>
           <input id="detail-title" value={draft.title} maxLength={200} onChange={(e) => edit('title', e.target.value)} onBlur={flush}
-            className="text-2xl font-bold bg-transparent outline-none border-b border-transparent focus:border-line-strong" />
+            className="text-[26px] leading-tight font-bold bg-transparent outline-none border-b border-transparent focus:border-line-strong" />
           {!draft.title.trim() && <p className="text-xs text-danger">标题不能为空</p>}
           <TagEditor idea={idea} onSave={(tags) => patch({ tags })} />
           <p className="text-xs text-muted">
@@ -193,7 +193,7 @@ function Editor({ idea, onClose }: { idea: Idea; onClose: () => void }) {
   );
 }
 
-const textArea = 'w-full px-3 py-2 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-accent resize-y';
+const textArea = 'w-full px-3 py-2 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-ink resize-y';
 
 function SaveIndicator({ state }: { state: SaveState }) {
   const text = { saved: '已保存', dirty: '未保存', saving: '保存中…', error: '保存失败' }[state];
@@ -257,7 +257,7 @@ function TagEditor({ idea, onSave }: { idea: Idea; onSave: (tags: string[]) => P
           }
         }}
         onBlur={add}
-        className="h-6 w-24 px-2 rounded-md border border-dashed border-line-strong bg-transparent text-xs outline-none focus:border-accent" />
+        className="h-6 w-24 px-2 rounded-[4px] border border-dashed border-line-strong bg-transparent text-xs outline-none focus:border-ink" />
       <datalist id="tag-options">
         {allTags?.filter((t) => !idea.tags.includes(t.name)).map((t) => <option key={t.name} value={t.name} />)}
       </datalist>
@@ -280,11 +280,11 @@ function IceSection({ idea, needsScore, onScore, onSave }: {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   return (
-    <section aria-labelledby="ice-h" className="flex flex-col gap-3 px-4 py-4 rounded-xl bg-sunken border border-line">
+    <section aria-labelledby="ice-h" className="flex flex-col gap-3 px-4 py-4 rounded-lg bg-bg border border-line">
       <div className="flex flex-wrap items-baseline gap-2.5">
         <h2 id="ice-h" className="font-bold">ICE 评分</h2>
         <span className="text-xs text-muted">总分 = (I + C + E) ÷ 3，保留 1 位，只舍不入</span>
-        <span className="ml-auto font-mono text-2xl font-bold text-accent-ink" data-testid="detail-ice">{formatIce(idea.iceX10)}</span>
+        <span className="ml-auto highlight px-1.5 num text-[28px] leading-tight font-bold" data-testid="detail-ice">{formatIce(idea.iceX10)}</span>
       </div>
       {scored ? (
         <>
@@ -324,12 +324,12 @@ function DescriptionEditor({ value, onChange, onBlur }: { value: string; onChang
           <label htmlFor="detail-desc" className="sr-only">描述（支持 Markdown）</label>
           <textarea id="detail-desc" value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} rows={8}
             placeholder="支持 Markdown。写写背景、要解决的问题、验证计划…"
-            className="w-full px-4 py-3 rounded-xl border border-line-strong bg-surface outline-none focus:border-accent resize-y leading-relaxed" />
+            className="w-full px-4 py-3 rounded-lg border border-line-strong bg-surface outline-none focus:border-ink resize-y leading-relaxed" />
         </>
       ) : value ? (
-        <Markdown source={value} className="px-4 py-3 rounded-xl border border-line" testId="desc-preview" />
+        <Markdown source={value} className="px-4 py-3 rounded-lg border border-line" testId="desc-preview" />
       ) : (
-        <button type="button" onClick={() => setMode('edit')} className="px-4 py-6 rounded-xl border border-dashed border-line-strong text-muted cursor-pointer">
+        <button type="button" onClick={() => setMode('edit')} className="px-4 py-6 rounded-lg border border-dashed border-line-strong text-muted hover:text-ink hover:border-ink-2 cursor-pointer">
           还没有描述，点击开始写
         </button>
       )}
@@ -359,7 +359,7 @@ function LinksEditor({ idea, onSave }: { idea: Idea; onSave: (links: string[]) =
       {idea.links.map((l) => (
         <div key={l} className="flex items-center gap-2 text-sm">
           <Icon name="link" size={14} className="shrink-0" />
-          <a href={l} target="_blank" rel="noopener noreferrer" className="text-accent truncate">{l}</a>
+          <a href={l} target="_blank" rel="noopener noreferrer" className="text-ink underline decoration-line-strong underline-offset-4 truncate">{l}</a>
           <button type="button" aria-label={`删除链接 ${l}`} onClick={() => onSave(idea.links.filter((x) => x !== l))}
             className="ml-auto px-1 text-muted hover:text-danger cursor-pointer">×</button>
         </div>

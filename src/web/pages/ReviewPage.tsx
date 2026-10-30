@@ -106,36 +106,36 @@ export function ReviewPage() {
     <div className="flex flex-col items-center gap-7 py-2">
       <header className="w-full max-w-[640px] flex flex-wrap items-center gap-4">
         <button type="button" onClick={() => (results.length ? setExited(true) : navigate('/'))}
-          className="inline-flex items-center gap-1.5 min-h-10 text-ink-2 cursor-pointer">
+          className="inline-flex items-center gap-1.5 min-h-10 text-ink-2 hover:text-ink cursor-pointer">
           <Icon name="back" size={16} />退出筛选
         </button>
         <div className="flex-[1_1_200px] flex items-center gap-3">
           <div role="progressbar" aria-label="筛选进度" aria-valuemin={0} aria-valuemax={queue.length} aria-valuenow={index}
-            className="flex-1 h-1.5 rounded-full bg-line overflow-hidden">
-            <div className="h-full bg-accent transition-[width]" style={{ width: `${(index / queue.length) * 100}%` }} />
+            className="flex-1 h-2 rounded-full bg-sunken overflow-hidden">
+            <div className="h-full rounded-full bg-ink transition-[width] motion-reduce:transition-none" style={{ width: `${(index / queue.length) * 100}%` }} />
           </div>
-          <span className="font-mono text-muted">{index + 1} / {queue.length}</span>
+          <span className="num text-muted">{index + 1} / {queue.length}</span>
         </div>
       </header>
 
       <span className="text-muted">收集箱 · 从最早的开始{cursor ? ' · 下一批' : ''}</span>
 
-      <article aria-labelledby="review-title" className="w-full max-w-[640px] flex flex-col gap-4 p-6 sm:p-8 rounded-2xl bg-surface border border-line shadow-md">
+      <article aria-labelledby="review-title" className="w-full max-w-[640px] flex flex-col gap-4 p-6 sm:p-9 rounded-md bg-surface border border-line shadow-[0_1px_0_var(--line-strong),6px_6px_0_-1px_var(--surface),6px_6px_0_0_var(--line-strong),0_24px_48px_-32px_rgb(23_33_28/0.45)]">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`px-2.5 rounded-md text-xs font-medium leading-6 ${isBacklog(current!.createdAt) ? 'bg-warn-soft text-warn-ink' : 'bg-chip text-ink-2'}`}>
+          <span className={`px-2 rounded-[4px] text-xs font-medium leading-6 ${isBacklog(current!.createdAt) ? 'bg-warn-soft text-warn-ink' : 'bg-chip text-ink-2'}`}>
             {relativeAge(current!.createdAt)}前记录
           </span>
           {current!.tags.map((t) => <TagChip key={t} name={t} />)}
           <span className="ml-auto"><IceBadge x10={current!.iceX10} /></span>
         </div>
-        <h1 id="review-title" className="text-[26px] font-bold leading-snug break-words">{current!.title}</h1>
+        <h1 id="review-title" className="text-[28px] font-bold leading-snug break-words">{current!.title}</h1>
         {current!.description ? (
           <Markdown source={current!.description} className="text-ink-2" />
         ) : (
           <p className="text-muted">没有描述</p>
         )}
         {current!.source && <p className="text-[13px] text-muted">来源：{current!.source}</p>}
-        <Link to={{ search: detail.toString() }} className="self-start text-[13px] text-accent">打开详情，补充描述和标签</Link>
+        <Link to={{ search: detail.toString() }} className="self-start text-[13px] text-ink-2 underline decoration-line-strong underline-offset-4 hover:decoration-ink">打开详情，补充描述和标签</Link>
       </article>
 
       <div role="group" aria-label="处理这条想法" className="w-full max-w-[640px] grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -157,12 +157,12 @@ function ActionButton({ label, kbd, onClick, disabled, tone }: {
   tone?: 'primary' | 'danger';
 }) {
   const style =
-    tone === 'primary' ? 'bg-accent text-white' : tone === 'danger' ? 'bg-surface border border-line-strong text-danger' : 'bg-surface border border-line-strong text-ink';
+    tone === 'primary' ? 'bg-accent text-on-accent hover:opacity-90' : tone === 'danger' ? 'bg-surface border border-line-strong text-danger hover:border-danger' : 'bg-surface border border-line-strong text-ink hover:border-ink-2';
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className={`flex flex-col items-center justify-center gap-1.5 min-h-20 rounded-xl font-medium cursor-pointer disabled:opacity-60 ${style}`}>
+      className={`flex flex-col items-center justify-center gap-1.5 min-h-20 rounded-lg font-medium cursor-pointer disabled:opacity-60 ${style}`}>
       {label}
-      <span className="opacity-80"><Kbd>{kbd}</Kbd></span>
+      <span className="opacity-70"><Kbd>{kbd}</Kbd></span>
     </button>
   );
 }
@@ -183,7 +183,7 @@ function Summary({ results, state, onNextBatch }: {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <span className="inline-flex items-center justify-center size-14 rounded-full bg-ok-soft text-ok"><Icon name="check" size={28} /></span>
-        <h1 className="text-2xl font-bold">收集箱是空的</h1>
+        <h1 className="page-title">收集箱是空的</h1>
         <p className="text-muted">没有需要筛选的想法。</p>
         <Link to="/" className={btn.primary}>回到看板</Link>
       </div>
@@ -195,26 +195,26 @@ function Summary({ results, state, onNextBatch }: {
     <div className="flex flex-col items-center gap-7 py-10">
       <div className="flex flex-col items-center gap-2.5 text-center">
         <span className="inline-flex items-center justify-center size-14 rounded-full bg-ok-soft text-ok"><Icon name="check" size={28} /></span>
-        <h1 className="text-[26px] font-bold">{title}</h1>
+        <h1 className="page-title">{title}</h1>
         <p className="text-muted" data-testid="summary-remaining">
           本次看了 {results.length} 条想法
           {inbox == null ? '' : inbox === 0 ? '，收集箱清空了' : `，收集箱还剩 ${inbox} 条${skipped ? `（含跳过的 ${skipped} 条）` : ''}`}
         </p>
       </div>
       <div className="w-full max-w-[640px] grid grid-cols-3 gap-3">
-        {([['推进', 'advanced', 'text-accent-ink'], ['放弃', 'dropped', 'text-danger'], ['跳过', 'skipped', 'text-muted']] as const).map(([label, o, tone]) => (
-          <div key={o} className="flex flex-col gap-1 p-4 rounded-2xl bg-surface border border-line">
+        {([['推进', 'advanced', 'text-ink'], ['放弃', 'dropped', 'text-danger'], ['跳过', 'skipped', 'text-muted']] as const).map(([label, o, tone]) => (
+          <div key={o} className="flex flex-col gap-1 p-4 rounded-lg bg-surface border border-line">
             <span className="text-muted">{label}</span>
-            <span className={`font-mono text-3xl font-bold ${tone}`} data-testid={`summary-${o}`}>{count(o)}</span>
+            <span className={`num text-4xl font-bold ${tone}`} data-testid={`summary-${o}`}>{count(o)}</span>
           </div>
         ))}
       </div>
       {results.length > 0 && (
-        <ul className="w-full max-w-[640px] px-5 py-1.5 rounded-2xl bg-surface border border-line">
+        <ul className="w-full max-w-[640px] px-5 py-1.5 rounded-lg bg-surface border border-line">
           {results.map((r) => (
             <li key={r.idea.id} className="flex flex-wrap items-center gap-2.5 py-3.5 border-t border-line first:border-t-0">
               <span className="flex-[1_1_240px] font-medium">{r.idea.title}</span>
-              <span className={`px-2.5 rounded-md text-xs font-medium leading-6 ${r.outcome === 'advanced' ? 'bg-accent-soft text-accent-ink' : r.outcome === 'dropped' ? 'bg-danger-soft text-danger' : 'bg-chip text-ink-2'}`}>
+              <span className={`px-2 rounded-[4px] text-xs font-medium leading-6 ${r.outcome === 'advanced' ? 'bg-accent-soft text-accent-ink' : r.outcome === 'dropped' ? 'bg-danger-soft text-danger' : 'bg-chip text-ink-2'}`}>
                 {r.outcome === 'advanced' ? '推进' : r.outcome === 'dropped' ? `放弃 · ${r.note ?? ''}` : '跳过'}
               </span>
             </li>

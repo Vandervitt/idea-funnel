@@ -39,14 +39,14 @@ export function ListPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[22px] font-bold">列表</h1>
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h1 className="page-title">列表</h1>
         {data && <span className="text-muted">已加载 {items.length} 条{hasNextPage ? '，还有更多' : ''}</span>}
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-3.5 rounded-xl bg-surface border border-line">
+      <div className="flex flex-col gap-3 px-4 py-3.5 rounded-lg bg-surface border border-line">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex-[1_1_280px] flex items-center gap-2 h-10 px-3 rounded-lg border border-line-strong focus-within:border-accent">
+          <div className="flex-[1_1_280px] flex items-center gap-2 h-10 px-3 rounded-lg border border-line-strong focus-within:border-ink">
             <Icon name="search" size={16} className="text-muted" />
             <label htmlFor="list-q" className="sr-only">搜索标题和描述</label>
             <input id="list-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={100}
@@ -67,7 +67,8 @@ export function ListPage() {
             return (
               <button key={s} type="button" aria-pressed={on}
                 onClick={() => f.setStages(on ? f.stages.filter((x) => x !== s) : [...f.stages, s])}
-                className={`h-8 px-3 rounded-full cursor-pointer ${on ? 'border border-accent bg-accent-soft text-accent-ink font-medium' : 'border border-line-strong bg-surface text-ink-2'}`}>
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full cursor-pointer ${on ? 'border border-ink bg-ink text-bg font-medium' : 'border border-line-strong bg-surface text-ink-2 hover:border-ink-2'}`}>
+                <span aria-hidden="true" className={`size-1.5 rounded-full ${STAGE_DOT[s]}`} />
                 {STAGE_LABELS[s]}
               </button>
             );
@@ -79,7 +80,7 @@ export function ListPage() {
             只看已评分
           </label>
           {hasFilters ? (
-            <button type="button" onClick={() => { setQ(''); f.clear(); }} className="ml-auto text-[13px] text-accent cursor-pointer">清空筛选</button>
+            <button type="button" onClick={() => { setQ(''); f.clear(); }} className="ml-auto text-[13px] text-ink-2 underline decoration-line-strong underline-offset-4 hover:decoration-ink cursor-pointer">清空筛选</button>
           ) : null}
         </div>
       </div>
@@ -90,10 +91,10 @@ export function ListPage() {
       {data && (items.length === 0 ? (
         <p className="py-12 text-center text-muted">{hasFilters ? '没有符合条件的想法' : '还没有想法，在上面的输入框记下第一个吧'}</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full min-w-[720px] border-collapse">
             <thead>
-              <tr className="text-left text-xs text-muted bg-nav">
+              <tr className="text-left text-xs text-muted border-b border-line-strong">
                 <th scope="col" className="px-4 py-3 font-medium">标题</th>
                 <th scope="col" className="px-4 py-3 font-medium">阶段</th>
                 <th scope="col" className="px-4 py-3 font-medium">标签</th>
@@ -105,15 +106,15 @@ export function ListPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id} className="border-t border-line hover:bg-nav">
-                  <td className="px-4 py-3.5"><Link to={open(i.id)} className="font-medium text-ink no-underline hover:text-accent">{i.title}</Link></td>
+                  <td className="px-4 py-3.5"><Link to={open(i.id)} className="font-medium text-ink no-underline hover:underline decoration-line-strong underline-offset-4">{i.title}</Link></td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       <span aria-hidden="true" className={`size-2 rounded-full ${STAGE_DOT[i.stage]}`} />{STAGE_LABELS[i.stage]}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-ink-2">{i.tags.map((t) => `#${t}`).join(' ')}</td>
-                  <td className="px-4 py-3.5 font-mono font-bold text-accent-ink">{formatIce(i.iceX10)}</td>
-                  <td className="px-4 py-3.5 font-mono text-muted">{i.iceX10 == null ? '未评分' : `${i.impact} / ${i.confidence} / ${i.ease}`}</td>
+                  <td className="px-4 py-3.5"><span className={i.iceX10 == null ? 'num text-muted' : 'highlight px-1 num font-bold'}>{formatIce(i.iceX10)}</span></td>
+                  <td className="px-4 py-3.5 num text-muted">{i.iceX10 == null ? '未评分' : `${i.impact} / ${i.confidence} / ${i.ease}`}</td>
                   <td className="px-4 py-3.5 text-muted whitespace-nowrap">{relativeAge(f.sort.startsWith('created') ? i.createdAt : i.updatedAt)}</td>
                 </tr>
               ))}

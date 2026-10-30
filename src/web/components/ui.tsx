@@ -3,26 +3,35 @@ import { formatIce } from '../../shared/ice';
 import type { Stage } from '../../shared/stage';
 
 export const STAGE_DOT: Record<Stage, string> = {
-  inbox: 'bg-muted',
-  evaluating: 'bg-accent',
-  validating: 'bg-warn',
-  building: 'bg-ok',
-  shipped: 'bg-ok',
-  dropped: 'bg-muted',
+  inbox: 'bg-stage-inbox',
+  evaluating: 'bg-stage-evaluating',
+  validating: 'bg-stage-validating',
+  building: 'bg-stage-building',
+  shipped: 'bg-stage-shipped',
+  dropped: 'bg-stage-dropped',
+};
+
+export const STAGE_EDGE: Record<Stage, string> = {
+  inbox: 'border-stage-inbox',
+  evaluating: 'border-stage-evaluating',
+  validating: 'border-stage-validating',
+  building: 'border-stage-building',
+  shipped: 'border-stage-shipped',
+  dropped: 'border-stage-dropped',
 };
 
 export const btn = {
   primary:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-accent text-white font-medium hover:brightness-110 disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-accent text-on-accent font-medium shadow-[inset_0_-2px_0_rgb(0_0_0/0.25)] hover:opacity-90 disabled:opacity-50 cursor-pointer',
   secondary:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg border border-line-strong bg-surface text-ink-2 hover:bg-chip disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg border border-line-strong bg-surface text-ink-2 hover:border-ink-2 hover:text-ink disabled:opacity-50 cursor-pointer',
   ghost: 'inline-flex items-center justify-center gap-2 min-h-10 px-3 rounded-lg text-ink-2 hover:bg-chip cursor-pointer',
   danger:
-    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-danger text-white font-medium hover:brightness-110 disabled:opacity-50 cursor-pointer',
+    'inline-flex items-center justify-center gap-2 min-h-10 px-4 rounded-lg bg-danger text-on-danger font-medium hover:opacity-90 disabled:opacity-50 cursor-pointer',
 };
 
 export const input =
-  'h-10 px-3 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-accent';
+  'h-10 px-3 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-ink';
 
 const ICONS = {
   board: <><rect x="3" y="4" width="5" height="16" rx="1" /><rect x="10" y="4" width="5" height="11" rx="1" /><rect x="17" y="4" width="4" height="7" rx="1" /></>,
@@ -51,7 +60,7 @@ export function Icon({ name, size = 18, className }: { name: keyof typeof ICONS;
 }
 
 export const TagChip = ({ name, onRemove }: { name: string; onRemove?: () => void }) => (
-  <span className="inline-flex items-center gap-1 px-2 rounded-md bg-chip text-ink-2 text-xs leading-5">
+  <span className="inline-flex items-center gap-1 px-1.5 rounded-[4px] border border-line text-ink-2 text-xs leading-5">
     #{name}
     {onRemove && (
       <button type="button" onClick={onRemove} aria-label={`移除标签 ${name}`} className="-mr-1 px-1 text-muted hover:text-ink cursor-pointer">
@@ -62,12 +71,12 @@ export const TagChip = ({ name, onRemove }: { name: string; onRemove?: () => voi
 );
 
 export function IceBadge({ x10 }: { x10: number | null }) {
-  if (x10 == null) return <span className="px-2 rounded-md border border-dashed border-line-strong text-muted text-xs leading-5">未评分</span>;
-  return <span className="px-2 rounded-md bg-accent-soft text-accent-ink font-mono font-bold text-xs leading-5">ICE {formatIce(x10)}</span>;
+  if (x10 == null) return <span className="px-1.5 rounded-[4px] border border-dashed border-line-strong text-muted text-xs leading-5">未评分</span>;
+  return <span className="highlight px-1.5 num font-bold text-[13px] leading-5">ICE {formatIce(x10)}</span>;
 }
 
 export const Kbd = ({ children }: { children: ReactNode }) => (
-  <kbd className="px-2 rounded-md border border-line-strong border-b-2 font-mono text-xs text-muted">{children}</kbd>
+  <kbd className="px-1.5 rounded-[4px] border border-current/30 border-b-2 font-mono text-xs">{children}</kbd>
 );
 
 /** Native <dialog>: focus trap, Esc and inert background for free. */
@@ -88,7 +97,7 @@ export function Dialog({ open, onClose, labelledBy, children, className = '' }: 
   return (
     <dialog ref={ref} aria-labelledby={labelledBy} onClose={onClose}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
-      className={`m-auto w-[min(520px,calc(100vw-32px))] rounded-2xl bg-surface text-ink p-6 shadow-2xl ${className}`}>
+      className={`m-auto w-[min(520px,calc(100vw-32px))] rounded-xl bg-surface text-ink p-6 border border-line shadow-2xl ${className}`}>
       {open && children}
     </dialog>
   );
@@ -112,7 +121,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div role="status" aria-live="polite" className="fixed z-50 bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center pointer-events-none">
         {toasts.map((t) => (
-          <div key={t.id} className={`flex items-center gap-3 px-4 py-2 rounded-lg shadow-lg text-sm ${t.tone === 'ok' ? 'bg-ink text-bg' : 'bg-danger text-white'}`}>
+          <div key={t.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm ${t.tone === 'ok' ? 'bg-ink text-bg' : 'bg-danger text-on-danger'}`}>
             {t.text}
             {t.action && (
               <button type="button" className="pointer-events-auto font-bold underline cursor-pointer"

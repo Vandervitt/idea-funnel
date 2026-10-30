@@ -120,7 +120,7 @@ export function IceSliders({ value, onChange, idPrefix }: {
           </label>
           <input id={`${idPrefix}-${d.key}`} type="range" min={1} max={10} value={value[d.key]}
             onChange={(e) => onChange({ ...value, [d.key]: Number(e.target.value) })} className="w-full" />
-          <span className="font-mono font-bold text-right">{value[d.key]}</span>
+          <span className="num text-lg font-bold text-right">{value[d.key]}</span>
         </div>
       ))}
     </div>
@@ -133,7 +133,7 @@ function gateTitle({ to, score, conclusion }: Gate) {
   return '进入「验证中」：打算验证什么？';
 }
 
-const textarea = 'w-full px-3 py-2 rounded-lg border border-line-strong bg-surface outline-none focus:border-accent resize-y';
+const textarea = 'w-full px-3 py-2 rounded-lg border border-line-strong bg-surface outline-none focus:border-ink resize-y';
 
 function GateForm({ gate, onCancel, onSubmit }: { gate: Gate; onCancel: () => void; onSubmit: (r: GateResult) => void }) {
   const { idea, to } = gate;
@@ -166,9 +166,9 @@ function GateForm({ gate, onCancel, onSubmit }: { gate: Gate; onCancel: () => vo
       {gate.score && (
         <>
           <IceSliders value={ice} onChange={setIce} idPrefix="gate" />
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent-soft text-accent-ink">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-accent-soft text-accent-ink">
             <span>ICE 总分</span>
-            <span className="ml-auto font-mono text-2xl font-bold" data-testid="gate-ice">{formatIce(iceScoreX10(ice.impact, ice.confidence, ice.ease))}</span>
+            <span className="ml-auto num text-[28px] leading-tight font-bold" data-testid="gate-ice">{formatIce(iceScoreX10(ice.impact, ice.confidence, ice.ease))}</span>
           </div>
         </>
       )}
@@ -192,7 +192,7 @@ function GateForm({ gate, onCancel, onSubmit }: { gate: Gate; onCancel: () => vo
       {gate.conclusion && (
         <div className="flex flex-col gap-2">
           {hasPlan && (
-            <div className="px-4 py-3 rounded-xl bg-sunken border border-line text-[13px] flex flex-col gap-1" aria-label="验证计划">
+            <div className="px-4 py-3 rounded-lg bg-bg border border-line text-[13px] flex flex-col gap-1" aria-label="验证计划">
               <span className="font-bold text-ink-2">对照验证计划</span>
               {idea.hypothesis && <span><span className="text-muted">验证假设：</span>{idea.hypothesis}</span>}
               {idea.successCriteria && <span><span className="text-muted">成功标准：</span>{idea.successCriteria}</span>}

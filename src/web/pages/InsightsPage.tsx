@@ -5,7 +5,7 @@ import type { Insights } from '../../shared/types';
 import { Icon, STAGE_DOT } from '../components/ui';
 import { STALL_DAYS } from '../../shared/types';
 
-const card = 'flex flex-col gap-4 p-5 rounded-xl bg-surface border border-line';
+const card = 'flex flex-col gap-4 p-5 rounded-lg bg-surface border border-line';
 
 export function InsightsPage() {
   const { data, isLoading, isError } = useInsights();
@@ -15,7 +15,7 @@ export function InsightsPage() {
   const total = data.stages.reduce((n, s) => n + s.count, 0);
   return (
     <div className="flex flex-col gap-5 max-w-[960px]">
-      <h1 className="text-[22px] font-bold">概览</h1>
+      <h1 className="page-title">概览</h1>
       {total === 0 ? (
         <p className="text-muted">还没有想法。记下几条之后，这里会显示漏斗和每周趋势。</p>
       ) : (
@@ -51,9 +51,9 @@ function Metrics({ metrics }: { metrics: Insights['metrics'] }) {
       <h2 id="metrics-title" className="sr-only">成功指标</h2>
       <ul className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {tiles.map((t) => (
-          <li key={t.label} className="flex flex-col gap-1.5 p-4 rounded-xl bg-surface border border-line" aria-label={`${t.label} ${t.value}，${t.ok ? '达标' : '需要关注'}`}>
+          <li key={t.label} className={`flex flex-col gap-1.5 p-4 rounded-lg bg-surface border border-line border-t-4 ${t.ok ? 'border-t-ok' : 'border-t-warn'}`} aria-label={`${t.label} ${t.value}，${t.ok ? '达标' : '需要关注'}`}>
             <span className="text-[13px] text-ink-2">{t.label}</span>
-            <span className="text-2xl font-semibold" data-testid={`metric-${t.label}`}>{t.value}</span>
+            <span className="num text-[30px] leading-tight font-bold" data-testid={`metric-${t.label}`}>{t.value}</span>
             <span className={`inline-flex items-center gap-1 self-start px-2 rounded-md text-xs font-medium leading-5 ${t.ok ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn-ink'}`}>
               <Icon name={t.ok ? 'check' : 'clock'} size={12} />
               {t.ok ? '达标' : '需要关注'}
@@ -84,9 +84,9 @@ function StageCounts({ stages }: { stages: Insights['stages'] }) {
                 {STAGE_LABELS[s.stage]}
               </span>
               <span className="h-2.5 rounded-full bg-sunken overflow-hidden" aria-hidden="true">
-                {s.count > 0 && <span className="block h-full rounded-full bg-series-1" style={{ width: `${(s.count / max) * 100}%` }} />}
+                {s.count > 0 && <span className={`block h-full rounded-full ${STAGE_DOT[s.stage]}`} style={{ width: `${(s.count / max) * 100}%` }} />}
               </span>
-              <span className="font-mono text-right" data-testid={`stage-count-${s.stage}`}>{s.count}</span>
+              <span className="num text-right" data-testid={`stage-count-${s.stage}`}>{s.count}</span>
             </Link>
           </li>
         ))}
@@ -121,7 +121,7 @@ function Funnel({ funnel, skipped }: { funnel: Insights['funnel']; skipped: numb
               <span className="h-2.5 rounded-full bg-sunken overflow-hidden" aria-hidden="true">
                 {s.reached > 0 && <span className="block h-full rounded-full bg-series-1" style={{ width: `${(s.reached / top) * 100}%` }} />}
               </span>
-              <span className="font-mono text-right" data-testid={`reached-${s.stage}`}>{s.reached}</span>
+              <span className="num text-right" data-testid={`reached-${s.stage}`}>{s.reached}</span>
             </div>
           </li>
         ))}
@@ -165,7 +165,7 @@ function Weekly({ weeks }: { weeks: Insights['weeks'] }) {
       </div>
 
       <div className="grid grid-cols-[28px_1fr] gap-2" aria-hidden="true">
-        <div className="relative h-44 text-[11px] text-muted font-mono">
+        <div className="relative h-44 text-[11px] text-muted num">
           {ticks.map((t, i) => (
             <span key={t} className="absolute right-0 -translate-y-1/2" style={{ top: `${(i / (ticks.length - 1)) * 100}%` }}>{t}</span>
           ))}
@@ -186,14 +186,14 @@ function Weekly({ weeks }: { weeks: Insights['weeks'] }) {
                   {SERIES.map((s) => (
                     <span key={s.key} className="flex items-center gap-1.5">
                       <span className={`size-2 rounded-sm ${s.className}`} />
-                      {s.label} <b className="font-mono">{w[s.key]}</b>
+                      {s.label} <b className="num">{w[s.key]}</b>
                     </span>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-12 pt-1.5 text-[11px] text-muted font-mono">
+          <div className="grid grid-cols-12 pt-1.5 text-[11px] text-muted num">
             {weeks.map((w, i) => (
               // On narrow screens label every other week, always including the current one.
               <span key={w.week} className={`text-center ${(weeks.length - 1 - i) % 2 ? 'max-sm:invisible' : ''}`}>{shortDate(w.week)}</span>
@@ -205,7 +205,7 @@ function Weekly({ weeks }: { weeks: Insights['weeks'] }) {
       <details className="text-[13px]">
         <summary className="cursor-pointer text-ink-2 w-fit">查看数据表</summary>
         <div className="overflow-x-auto mt-2">
-          <table className="w-full text-left font-mono">
+          <table className="w-full text-left num">
             <caption className="sr-only">最近 12 周每周新增与处理数量</caption>
             <thead className="text-muted">
               <tr><th scope="col" className="py-1 font-normal">周（周一）</th><th scope="col" className="font-normal">新增</th><th scope="col" className="font-normal">处理</th></tr>

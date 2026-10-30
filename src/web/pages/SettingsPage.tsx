@@ -6,7 +6,7 @@ import { parseBatch } from '../../shared/capture';
 import type { ImportResult } from '../../shared/types';
 import { Dialog, TagChip, btn, input, useToast } from '../components/ui';
 
-const section = 'flex flex-col gap-3 p-5 rounded-xl bg-surface border border-line';
+const section = 'flex flex-col gap-3 p-5 rounded-lg bg-surface border border-line';
 const PREVIEW_ROWS = 50;
 
 const summary = (r: ImportResult) => `新增 ${r.inserted} 条${r.skipped ? `，跳过 ${r.skipped} 条（库里已有）` : ''}`;
@@ -16,7 +16,7 @@ export function SettingsPage() {
   const qc = useQueryClient();
   return (
     <div className="flex flex-col gap-5 max-w-[640px]">
-      <h1 className="text-[22px] font-bold">设置</h1>
+      <h1 className="page-title">设置</h1>
       <section aria-labelledby="export-title" className={section}>
         <h2 id="export-title" className="font-bold">导出</h2>
         <p className="text-muted">JSON 包含全部想法、标签和时间线，可以原样导回；Markdown 方便阅读和归档。</p>
@@ -109,7 +109,7 @@ function TagManager() {
               ) : (
                 <>
                   <span className="font-medium">#{t.name}</span>
-                  <span className="font-mono text-xs text-muted">{t.count} 条</span>
+                  <span className="num text-xs text-muted">{t.count} 条</span>
                   <button type="button" className={`${btn.ghost} ml-auto`} aria-label={`重命名 #${t.name}`}
                     onClick={() => setEditing({ from: t.name, to: t.name })}>重命名</button>
                   <button type="button" className={`${btn.ghost} text-danger`} aria-label={`删除 #${t.name}`}
@@ -212,12 +212,12 @@ function BatchImport() {
       <label htmlFor="batch-text" className="text-muted">每行一条想法，可以用 #标签 分类，导入到收集箱。一次最多 500 条。</label>
       <textarea id="batch-text" rows={6} value={text} onChange={(e) => { setText(e.target.value); setResult(null); }}
         placeholder={'记账小程序 #工具\n播客搜索 #AI'}
-        className="p-3 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-accent font-sans" />
+        className="p-3 rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted outline-none focus:border-ink font-sans" />
       {text.trim() && (
         <div className="flex flex-col gap-2" aria-label="导入预览" role="region">
           <p className="text-ink-2">将会导入 <b>{items.length}</b> 条{errors.length ? `，${errors.length} 行无法导入` : ''}</p>
           {items.length > 0 && (
-            <ul className="flex flex-col max-h-64 overflow-y-auto px-3 rounded-lg bg-sunken">
+            <ul className="flex flex-col max-h-64 overflow-y-auto px-3 rounded-lg bg-bg border border-line">
               {items.slice(0, PREVIEW_ROWS).map((i) => (
                 <li key={i.line} className="flex flex-wrap items-center gap-2 py-2 border-t border-line first:border-t-0">
                   <span className="font-medium break-all">{i.title}</span>
