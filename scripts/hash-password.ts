@@ -1,4 +1,4 @@
-// Prints a PASSWORD_HASH for the given password. Usage: npm run hash-password
+// Prints a PBKDF2 hash for a custom SQL initializer/recovery script. Usage: npm run hash-password
 // Reads from stdin without echo so the password never lands in shell history.
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';

@@ -35,8 +35,9 @@ it('upgrades real legacy data and assigns ideas, tags and events exclusively to 
     };
     const password = 'legacy-password';
     const passwordHash = await hashPassword(password);
+    await db.query("UPDATE users SET password_hash = $1 WHERE id = 'me'", [passwordHash]);
     const app = createApp({ getDb: async () => db,
-      getConfig: () => ({ passwordHash, secureCookie: true }),
+      getConfig: () => ({ secureCookie: true }),
       getClientIp: () => '127.0.0.1' });
     const request = (path: string, cookie = '', body?: unknown) => app.request(`http://localhost/api${path}`, {
       method: body === undefined ? 'GET' : 'POST',

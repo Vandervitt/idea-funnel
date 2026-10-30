@@ -16,11 +16,6 @@ const digest = async (token: string) => encode(new Uint8Array(await crypto.subtl
 
 export function createAccounts(db: Db) {
   return {
-    async initializeAdmin(passwordHash: string) {
-      // This is an initialization credential, never a password reset on subsequent deployments.
-      await db.query(`INSERT INTO users (id, username, role, password_hash) VALUES ('me', 'admin', 'admin', $1)
-        ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash WHERE users.password_hash IS NULL`, [passwordHash]);
-    },
     async credentials(username: string): Promise<Credentials | undefined> {
       const [user] = await db.query<Credentials>(`SELECT id, username, role, password_hash, password_version FROM users WHERE username = $1`, [username]);
       return user;

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const PASSWORD = 'idea-funnel'; // dev fallback password of src/entry/node.ts
+const PASSWORD = 'IdeaFunnel-Init-2026!'; // temporary administrator password initialized by prisma/init.sql
 const uid = () => Math.random().toString(36).slice(2, 7);
 
 async function login(page: Page) {

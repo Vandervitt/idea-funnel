@@ -8,6 +8,7 @@ const PASSWORD = 'account-password-123';
 let db: Awaited<ReturnType<typeof createPgliteDb>>;
 let app: ReturnType<typeof createApp>;
 let admin: string;
+let passwordHash: string;
 
 function request(path: string, cookie = '', body?: unknown, method?: string, ip = '1.2.3.4') {
   return app.request(`http://localhost/api${path}`, {
@@ -29,16 +30,16 @@ async function user(username: string) {
 
 beforeAll(async () => {
   db = await createPgliteDb();
-  const passwordHash = await hashPassword(PASSWORD);
+  passwordHash = await hashPassword(PASSWORD);
   app = createApp({ getDb: async () => db,
-    getConfig: () => ({ passwordHash, secureCookie: true }),
+    getConfig: () => ({ secureCookie: true }),
     getClientIp: (c) => c.req.header('x-real-ip') ?? 'unknown' });
 });
 afterAll(async () => { await db.close(); });
 beforeEach(async () => {
   await db.query('TRUNCATE ideas, tags, idea_tags, idea_events, login_attempts CASCADE');
-  // Also runs against the pre-feature schema, so the red test fails on HTTP behavior.
-  await db.query(`DO $$ BEGIN IF to_regclass('public.users') IS NOT NULL THEN TRUNCATE users CASCADE; END IF; END $$`);
+  await db.query('TRUNCATE users CASCADE');
+  await db.query("INSERT INTO users (id, username, role, password_hash) VALUES ('me', 'admin', 'admin', $1)", [passwordHash]);
   admin = await login();
 });
 
@@ -118,12 +119,6 @@ describe('accounts and ownership', () => {
     expect((await request('/me', admin)).status).toBe(200);
     expect((await request('/auth/login', '', { username: 'alice', password: PASSWORD })).status).toBe(401);
     expect((await request('/me', await login('ALICE', 'new-password-123'))).status).toBe(200);
-  });
-
-  it('never resets an existing admin password from the bootstrap configuration', async () => {
-    expect((await request('/auth/password', admin, { currentPassword: PASSWORD, newPassword: 'changed-admin-password' })).status).toBe(200);
-    expect((await request('/auth/login', '', { username: 'admin', password: PASSWORD })).status).toBe(401);
-    expect(await (await request('/me', await login('admin', 'changed-admin-password'))).json()).toEqual({ id: 'me', username: 'admin', role: 'admin' });
   });
 
   it('rejects invalid account inputs and password-only login', async () => {

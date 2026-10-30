@@ -14,9 +14,10 @@ let cookie: string;
 beforeAll(async () => {
   db = await createPgliteDb();
   const passwordHash = await hashPassword(PASSWORD);
+  await db.query("UPDATE users SET password_hash = $1 WHERE id = 'me'", [passwordHash]);
   app = createApp({
     getDb: async () => db,
-    getConfig: () => ({ passwordHash, secureCookie: true }),
+    getConfig: () => ({ secureCookie: true }),
     getClientIp: (c) => c.req.header('x-real-ip') ?? 'unknown',
   });
 

@@ -7,7 +7,8 @@ it('limits password-change guesses without locking normal business requests or l
   const db = await createPgliteDb();
   try {
     const passwordHash = await hashPassword('correct-password');
-    const app = createApp({ getDb: async () => db, getConfig: () => ({ passwordHash, secureCookie: true }), getClientIp: () => '127.0.0.1' });
+    await db.query("UPDATE users SET password_hash = $1 WHERE id = 'me'", [passwordHash]);
+    const app = createApp({ getDb: async () => db, getConfig: () => ({ secureCookie: true }), getClientIp: () => '127.0.0.1' });
     const post = (path: string, body: unknown, cookie = '') => app.request(`http://localhost/api${path}`, {
       method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost', cookie }, body: JSON.stringify(body),
     });

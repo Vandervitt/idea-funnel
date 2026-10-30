@@ -11,7 +11,7 @@
 | `src/entry/` | 平台入口：`node.ts`（本地开发）、`cloudflare.ts`（Workers） |
 | `api/index.ts` | Vercel Functions 入口 |
 | `src/web/` | React SPA（Vite 根目录） |
-| `prisma/` | `schema.prisma` + `migrations/`：**仅用 Prisma Migrate 管理表结构**，业务查询仍是 `repo.ts` 里的 SQL |
+| `prisma/` | `schema.prisma` + `migrations/`：**仅用 Prisma Migrate 管理表结构**；`init.sql` 初始化账号，`operations/` 放手动数据操作 SQL |
 | `scripts/` | `vercel-build.mjs`（构建时迁移）、`pg-local.mjs`（本地 Postgres）、`verify-vercel-function.mjs`、`hash-password.ts` |
 | `.github/workflows/ci.yml` | PR / `main` / `preview` 推送时跑全部检查（部署由 Vercel Git 集成负责：`main` → 生产，`preview` → 预览） |
 | `e2e/` | Playwright 用例 |
@@ -26,6 +26,8 @@
 - 前端只能以 `import type` 方式引用 `shared/schema.ts`，否则会把 zod 打进前端包；运行时常量放在 `shared/types.ts`。
 - 多账号私有数据：`owner_id` 只能取服务端会话用户 ID；`admin` 内部 ID 为 `'me'`，继承旧数据。管理员仅多出账号管理权限，不能读取其他账号灵感。账号操作与升级说明见 [README.md](README.md#账号与数据)。
 
+- 管理员初始化只通过 `prisma/init.sql`，登录接口不得创建或重置密码；已存在账号的恢复使用独立手动 SQL，详见 [管理员初始化与恢复](docs/admin-bootstrap.md)。
+
 ## 数据库迁移（本项目覆盖全局「手动 SQL 脚本」规则）
 
 用户于 2026-10-29 决定：本项目使用 **Prisma Migrate**，并在 CI/CD 中自动执行。
@@ -39,12 +41,12 @@
 
 | 命令 | 用途 |
 | --- | --- |
-| `npm run dev` | API :8787 + Vite :5173，数据存在 `.data/pglite`，初始账号 `admin` / 密码 `idea-funnel` |
+| `npm run dev` | API :8787 + Vite :5173，数据存在 `.data/pglite`，初始账号 `admin` / 临时密码 `IdeaFunnel-Init-2026!` |
 | `npm test` | 单元测试 + 基于 PGlite 的 API 集成测试 |
 | `npm run typecheck` / `npm run build` | 类型检查 / 构建 SPA 到 `dist/` |
 | `npm run test:e2e` | 自动启动 :8788/:5174 的独立实例跑 E2E，产物在 `.playwright/` |
 | `npm run verify:vercel` | 按 Vercel 的方式（逐文件编译 + Node ESM）加载函数，并请求一次 `/api/health` |
-| `npm run hash-password` | 生成 `PASSWORD_HASH` |
+| `npm run hash-password` | 生成 SQL 初始化/恢复使用的 PBKDF2 哈希 |
 
 | `npm run db:local` / `db:check` / `db:migrate` | 本地 Postgres / schema 与迁移一致性检查 / 执行迁移 |
 

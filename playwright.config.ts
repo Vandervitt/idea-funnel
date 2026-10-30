@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `DATABASE_URL= DATABASE_URL_UNPOOLED= API_PORT=${API_PORT} WEB_PORT=${WEB_PORT} PGLITE_DIR=.data/pglite-e2e-${Date.now()} PASSWORD_HASH= npm run dev`,
+    command: `DATABASE_URL= DATABASE_URL_UNPOOLED= API_PORT=${API_PORT} WEB_PORT=${WEB_PORT} PGLITE_DIR=.data/pglite-e2e-${Date.now()} npm run dev`,
     url: `http://localhost:${WEB_PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 60_000,

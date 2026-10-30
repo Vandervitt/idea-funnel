@@ -24,7 +24,6 @@ import {
 import { toMarkdown } from '../shared/export.js';
 
 export interface AppConfig {
-  passwordHash: string;
   /** false only for plain-http local development. */
   secureCookie: boolean;
 }
@@ -89,7 +88,6 @@ export function createApp(deps: AppDeps) {
     if (await limiter.isLocked(ip, username)) return c.json({ error: 'locked', message: '尝试次数过多，请 15 分钟后再试' }, 429);
 
     const accounts = createAccounts(db);
-    if (username === 'admin') await accounts.initializeAdmin(cfg.passwordHash);
     const user = await accounts.credentials(username);
     const stored = user?.password_hash ?? await (dummyHash ??= hashPassword(crypto.randomUUID()));
     const valid = await verifyPassword(password, stored);

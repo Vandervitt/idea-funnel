@@ -8,7 +8,6 @@ let db: Promise<Db> | undefined;
 const app = createApp({
   getDb: () => (db ??= createNeonDb(process.env.DATABASE_URL!)),
   getConfig: () => ({
-    passwordHash: process.env.PASSWORD_HASH!,
     secureCookie: true,
   }),
   // Set by Vercel's proxy to the real client address; a client-sent value is not passed through.

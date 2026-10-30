@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const PASSWORD = 'idea-funnel';
+const PASSWORD = 'IdeaFunnel-Init-2026!';
 
 async function login(page: Page, username: string) {
   await page.goto('/login');
