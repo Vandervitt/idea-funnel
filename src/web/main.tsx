@@ -1,8 +1,8 @@
 import { StrictMode, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
-import { QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { api, ApiError, queryClient, UNAUTHORIZED_EVENT } from './api';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ApiError, AUTH_CHANGE_KEY, queryClient, UNAUTHORIZED_EVENT, useMe } from './api';
 import { ToastProvider } from './components/ui';
 import { StageMoverProvider } from './components/StageMover';
 import { Layout } from './components/Layout';
@@ -18,7 +18,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const next = encodeURIComponent(location.pathname + location.search);
-  const me = useQuery({ queryKey: ['me'], queryFn: () => api('/me'), retry: false, staleTime: Infinity });
+  const me = useMe();
 
   // Any 401 later on (session expired) sends the user back to login.
   useEffect(() => {
@@ -26,8 +26,15 @@ function RequireAuth({ children }: { children: ReactNode }) {
       queryClient.clear();
       navigate(`/login?next=${next}`, { replace: true });
     };
+    const onAuthChange = (event: StorageEvent) => {
+      if (event.key === AUTH_CHANGE_KEY) window.location.reload();
+    };
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    window.addEventListener('storage', onAuthChange);
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+      window.removeEventListener('storage', onAuthChange);
+    };
   }, [navigate, next]);
 
   if (me.isPending) return null;

@@ -1,5 +1,5 @@
 // Cloudflare Workers deployment (used only if Cloudflare is chosen).
-// Secrets: wrangler secret put DATABASE_URL / PASSWORD_HASH / SESSION_SECRET
+// Secrets: wrangler secret put DATABASE_URL / PASSWORD_HASH
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "idea-funnel",

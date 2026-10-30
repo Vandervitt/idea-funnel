@@ -1,11 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
-import { hashPassword, signSession, SESSION_COOKIE, MAX_GLOBAL_FAILURES } from './auth.js';
+import { hashPassword, SESSION_COOKIE, MAX_ACCOUNT_FAILURES } from './auth.js';
 import { createPgliteDb } from './pglite.js';
 import type { Idea, IdeaEvent, IdeaPage, BoardColumn, Insights, ExportFile, ImportResult } from '../shared/schema.js';
 
 const PASSWORD = 'correct horse battery staple';
-const SECRET = 'test-secret-test-secret-test-secret-0123';
 const ORIGIN = 'http://localhost';
 
 let db: Awaited<ReturnType<typeof createPgliteDb>>;
@@ -17,16 +16,19 @@ beforeAll(async () => {
   const passwordHash = await hashPassword(PASSWORD);
   app = createApp({
     getDb: async () => db,
-    getConfig: () => ({ passwordHash, sessionSecret: SECRET, secureCookie: true }),
+    getConfig: () => ({ passwordHash, secureCookie: true }),
     getClientIp: (c) => c.req.header('x-real-ip') ?? 'unknown',
   });
-  cookie = `${SESSION_COOKIE}=${await signSession(SECRET)}`;
+
 });
 
 afterAll(() => db.close());
 
 beforeEach(async () => {
   await db.query('TRUNCATE ideas, tags, idea_tags, idea_events, login_attempts CASCADE');
+  const res = await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD } });
+  expect(res.status).toBe(200);
+  cookie = res.headers.get('set-cookie')!.split(';')[0];
 });
 
 function call(path: string, init: { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string> } = {}) {
@@ -57,12 +59,12 @@ describe('auth', () => {
   });
 
   it('rejects an expired session', async () => {
-    const old = await signSession(SECRET, Date.now() - 31 * 24 * 3600 * 1000);
-    expect((await call('/api/me', { auth: false, headers: { cookie: `${SESSION_COOKIE}=${old}` } })).status).toBe(401);
+    await db.query("UPDATE sessions SET expires_at = now() - interval '1 second'");
+    expect((await call('/api/me')).status).toBe(401);
   });
 
   it('logs in with the right password and sets a hardened cookie', async () => {
-    const res = await call('/api/auth/login', { auth: false, body: { password: PASSWORD } });
+    const res = await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD } });
     expect(res.status).toBe(200);
     const setCookie = res.headers.get('set-cookie')!;
     expect(setCookie).toMatch(/HttpOnly/);
@@ -75,14 +77,14 @@ describe('auth', () => {
 
   it('locks an IP after 5 wrong passwords, even for the right one', async () => {
     for (let left = 4; left >= 1; left--) {
-      const res = await call('/api/auth/login', { auth: false, body: { password: 'nope' } });
+      const res = await call('/api/auth/login', { auth: false, body: { username: 'admin', password: 'nope' } });
       expect(res.status).toBe(401);
       expect((await res.json()).attemptsLeft).toBe(left);
     }
-    expect((await call('/api/auth/login', { auth: false, body: { password: 'nope' } })).status).toBe(429);
-    expect((await call('/api/auth/login', { auth: false, body: { password: PASSWORD } })).status).toBe(429);
+    expect((await call('/api/auth/login', { auth: false, body: { username: 'admin', password: 'nope' } })).status).toBe(429);
+    expect((await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD } })).status).toBe(429);
     // Another IP is unaffected.
-    const other = await call('/api/auth/login', { auth: false, body: { password: PASSWORD }, headers: { 'x-real-ip': '2.2.2.2' } });
+    const other = await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD }, headers: { 'x-real-ip': '2.2.2.2' } });
     expect(other.status).toBe(200);
   });
 
@@ -91,18 +93,18 @@ describe('auth', () => {
     for (let i = 0; i < 5; i++) {
       await call('/api/auth/login', {
         auth: false,
-        body: { password: 'nope' },
+        body: { username: 'admin', password: 'nope' },
         headers: { 'cf-connecting-ip': `9.9.9.${i}`, 'x-forwarded-for': `8.8.8.${i}` },
       });
     }
-    expect((await call('/api/auth/login', { auth: false, body: { password: PASSWORD } })).status).toBe(429);
+    expect((await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD } })).status).toBe(429);
   });
 
-  it('locks all logins after too many failures across IPs', async () => {
-    for (let i = 0; i < MAX_GLOBAL_FAILURES; i++) {
-      await call('/api/auth/login', { auth: false, body: { password: 'nope' }, headers: { 'x-real-ip': `10.0.${i >> 8}.${i & 255}` } });
+  it('locks the targeted account after too many failures across IPs', async () => {
+    for (let i = 0; i < MAX_ACCOUNT_FAILURES; i++) {
+      await call('/api/auth/login', { auth: false, body: { username: 'admin', password: 'nope' }, headers: { 'x-real-ip': `10.0.${i >> 8}.${i & 255}` } });
     }
-    const fresh = await call('/api/auth/login', { auth: false, body: { password: PASSWORD }, headers: { 'x-real-ip': '3.3.3.3' } });
+    const fresh = await call('/api/auth/login', { auth: false, body: { username: 'admin', password: PASSWORD }, headers: { 'x-real-ip': '3.3.3.3' } });
     expect(fresh.status).toBe(429);
   });
 

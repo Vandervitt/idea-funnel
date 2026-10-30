@@ -5,6 +5,7 @@ const uid = () => Math.random().toString(36).slice(2, 7);
 
 async function login(page: Page) {
   await page.goto('/login');
+  await page.getByLabel('用户名', { exact: true }).fill('admin');
   await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: '登录' }).click();
   await expect(page.getByRole('heading', { name: '看板' })).toBeVisible();
@@ -70,6 +71,7 @@ async function importLines(page: Page, titles: string[]) {
 test('redirects to login, rejects a wrong password, then logs in', async ({ page }) => {
   await page.goto('/list');
   await expect(page).toHaveURL(/\/login\?next=%2Flist/);
+  await page.getByLabel('用户名', { exact: true }).fill('admin');
   await page.getByLabel('密码', { exact: true }).fill('wrong-password');
   await page.getByRole('button', { name: '登录' }).click();
   await expect(page.getByRole('alert')).toContainText('还可以试 4 次');

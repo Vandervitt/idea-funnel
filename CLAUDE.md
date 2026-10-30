@@ -24,7 +24,7 @@
 - 所有 SQL 都用参数化查询；列表使用游标分页，查询要能走索引（`app.test.ts` 中有 `EXPLAIN` 断言）。
 - **服务端相对 import 必须带 `.js` 后缀**（`api/`、`src/server`、`src/shared`、`src/entry`）：Vercel 逐文件编译、不打包，Node ESM 找不到不带后缀的模块。`npm run verify:vercel` 会模拟这个过程做检查。
 - 前端只能以 `import type` 方式引用 `shared/schema.ts`，否则会把 zod 打进前端包；运行时常量放在 `shared/types.ts`。
-- 单用户：`owner_id` 固定为 `'me'`，字段保留，供以后扩展多用户。
+- 多账号私有数据：`owner_id` 只能取服务端会话用户 ID；`admin` 内部 ID 为 `'me'`，继承旧数据。管理员仅多出账号管理权限，不能读取其他账号灵感。账号操作与升级说明见 [README.md](README.md#账号与数据)。
 
 ## 数据库迁移（本项目覆盖全局「手动 SQL 脚本」规则）
 
@@ -39,7 +39,7 @@
 
 | 命令 | 用途 |
 | --- | --- |
-| `npm run dev` | API :8787 + Vite :5173，数据存在 `.data/pglite`，默认密码 `idea-funnel` |
+| `npm run dev` | API :8787 + Vite :5173，数据存在 `.data/pglite`，初始账号 `admin` / 密码 `idea-funnel` |
 | `npm test` | 单元测试 + 基于 PGlite 的 API 集成测试 |
 | `npm run typecheck` / `npm run build` | 类型检查 / 构建 SPA 到 `dist/` |
 | `npm run test:e2e` | 自动启动 :8788/:5174 的独立实例跑 E2E，产物在 `.playwright/` |

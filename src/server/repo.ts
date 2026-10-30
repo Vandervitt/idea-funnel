@@ -58,17 +58,21 @@ function toEvent(r: Row): IdeaEvent {
 function setTagsStatements(owner: string, ideaId: string, tags: string[]): Statement[] {
   return [
     {
-      text: `INSERT INTO tags (owner_id, name) SELECT $1, unnest($2::text[]) ON CONFLICT (owner_id, name) DO NOTHING`,
-      params: [owner, tags],
+      text: `INSERT INTO tags (owner_id, name) SELECT $1, unnest($2::text[])
+             FROM ideas WHERE id = $3 AND owner_id = $1 ON CONFLICT (owner_id, name) DO NOTHING`,
+      params: [owner, tags, ideaId],
     },
     {
       text: `DELETE FROM idea_tags it USING tags t
-             WHERE it.idea_id = $1 AND t.id = it.tag_id AND NOT (t.name = ANY($2::text[]))`,
-      params: [ideaId, tags],
+             WHERE it.idea_id = $1 AND t.id = it.tag_id AND t.owner_id = $3
+               AND EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND owner_id = $3)
+               AND NOT (t.name = ANY($2::text[]))`,
+      params: [ideaId, tags, owner],
     },
     {
       text: `INSERT INTO idea_tags (idea_id, tag_id)
              SELECT $1, t.id FROM tags t WHERE t.owner_id = $2 AND t.name = ANY($3::text[])
+               AND EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND owner_id = $2)
              ON CONFLICT DO NOTHING`,
       params: [ideaId, owner, tags],
     },
@@ -87,8 +91,8 @@ const iceNote = (ice: Ice | null) =>
  * Timeline entry for a score change, merged into the latest entry when that is a recent score entry.
  * `ifStage`: only write it when the idea is (now) in that stage — for moves guarded against concurrent changes.
  */
-function scoreEventStatement(ideaId: string, ice: Ice | null, ifStage?: Stage): Statement {
-  const guard = 'AND ($4::text IS NULL OR EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND stage = $4))';
+function scoreEventStatement(owner: string, ideaId: string, ice: Ice | null, ifStage?: Stage): Statement {
+  const guard = 'AND EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND owner_id = $5 AND ($4::text IS NULL OR stage = $4))';
   return {
     text: `WITH latest AS (
              SELECT id, type, created_at FROM idea_events WHERE idea_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1
@@ -100,7 +104,7 @@ function scoreEventStatement(ideaId: string, ice: Ice | null, ifStage?: Stage): 
            )
            INSERT INTO idea_events (idea_id, type, note)
            SELECT $1, 'score', $2 WHERE NOT EXISTS (SELECT 1 FROM merged) ${guard}`,
-    params: [ideaId, iceNote(ice), SCORE_MERGE_MINUTES, ifStage ?? null],
+    params: [ideaId, iceNote(ice), SCORE_MERGE_MINUTES, ifStage ?? null, owner],
   };
 }
 
@@ -191,11 +195,13 @@ export function createRepo(db: Db) {
         set('confidence', input.ice?.confidence ?? null);
         set('ease', input.ice?.ease ?? null);
       }
+      // The parent UPDATE holds its row lock through the child writes; every child also
+      // checks ownership in case the UUID was replaced before the UPDATE acquired a row.
       const statements: Statement[] = [
         { text: `UPDATE ideas SET ${[...sets, 'updated_at = now()'].join(', ')} WHERE owner_id = $1 AND id = $2`, params },
       ];
       if (input.tags !== undefined) statements.push(...setTagsStatements(owner, id, input.tags));
-      if (input.ice !== undefined && !sameIce(current, input.ice)) statements.push(scoreEventStatement(id, input.ice));
+      if (input.ice !== undefined && !sameIce(current, input.ice)) statements.push(scoreEventStatement(owner, id, input.ice));
       await db.transaction(statements);
       return getIdea(owner, id);
     },
@@ -232,11 +238,11 @@ export function createRepo(db: Db) {
             input.ice?.ease ?? null, current.stage, input.plan?.hypothesis ?? null, input.plan?.successCriteria ?? null],
         },
         // Before the stage entry, so the move is the latest entry; skipped if the guarded update above did not happen.
-        ...(input.ice && !sameIce(current, input.ice) ? [scoreEventStatement(id, input.ice, input.to)] : []),
+        ...(input.ice && !sameIce(current, input.ice) ? [scoreEventStatement(owner, id, input.ice, input.to)] : []),
         {
           text: `INSERT INTO idea_events (idea_id, type, from_stage, to_stage, note)
-                 SELECT $1, 'stage', $2, $3, $4 WHERE EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND stage = $3)`,
-          params: [id, current.stage, input.to, note],
+                 SELECT $1, 'stage', $2, $3, $4 WHERE EXISTS (SELECT 1 FROM ideas WHERE id = $1 AND stage = $3 AND owner_id = $5)`,
+          params: [id, current.stage, input.to, note, owner],
         },
       ]);
       if (updated.length === 0) throw new TransitionError('same');
@@ -506,13 +512,14 @@ export function createRepo(db: Db) {
     },
 
     async listEvents(owner: string, ideaId: string): Promise<IdeaEvent[] | null> {
-      if (!(await getIdea(owner, ideaId))) return null;
+      // Authorize and read in one snapshot: a deleted UUID may be re-imported by another owner.
       const rows = await db.query(
-        `SELECT id, type, from_stage, to_stage, note, created_at FROM idea_events
-         WHERE idea_id = $1 ORDER BY created_at DESC, id DESC`,
-        [ideaId],
+        `SELECT e.id, e.type, e.from_stage, e.to_stage, e.note, e.created_at FROM ideas i
+         LEFT JOIN idea_events e ON e.idea_id = i.id
+         WHERE i.owner_id = $1 AND i.id = $2 ORDER BY e.created_at DESC, e.id DESC`,
+        [owner, ideaId],
       );
-      return rows.map(toEvent);
+      return rows.length ? rows.filter((row) => row.id !== null).map(toEvent) : null;
     },
 
     async addNote(owner: string, ideaId: string, note: string): Promise<IdeaEvent | null> {

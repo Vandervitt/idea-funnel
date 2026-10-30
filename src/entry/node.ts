@@ -17,7 +17,6 @@ if (!passwordHash) {
   passwordHash = await hashPassword(DEV_PASSWORD);
   console.warn(`[dev] PASSWORD_HASH 未设置，本地开发密码为 "${DEV_PASSWORD}"`);
 }
-const sessionSecret = process.env.SESSION_SECRET ?? 'dev-only-session-secret-change-me-0000';
 
 const db: Db = process.env.DATABASE_URL
   ? await createNeonDb(process.env.DATABASE_URL)
@@ -25,7 +24,7 @@ const db: Db = process.env.DATABASE_URL
 
 const app = createApp({
   getDb: async () => db,
-  getConfig: () => ({ passwordHash, sessionSecret, secureCookie: false }),
+  getConfig: () => ({ passwordHash, secureCookie: false }),
   // Socket address (through the Vite proxy this is localhost — fine for local dev).
   getClientIp: (c) => getConnInfo(c).remote.address ?? 'unknown',
 });

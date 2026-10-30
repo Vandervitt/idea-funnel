@@ -6,7 +6,7 @@ const WEB_PORT = 5174;
 
 export default defineConfig({
   testDir: 'e2e',
-  outputDir: '.playwright/mvp-20261029/results',
+  outputDir: '.playwright/账号体系-20261031/results',
   reporter: [['list']],
   fullyParallel: false,
   workers: 1,
@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `rm -rf .data/pglite-e2e && API_PORT=${API_PORT} WEB_PORT=${WEB_PORT} PGLITE_DIR=.data/pglite-e2e PASSWORD_HASH= npm run dev`,
+    command: `DATABASE_URL= DATABASE_URL_UNPOOLED= API_PORT=${API_PORT} WEB_PORT=${WEB_PORT} PGLITE_DIR=.data/pglite-e2e-${Date.now()} PASSWORD_HASH= npm run dev`,
     url: `http://localhost:${WEB_PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 60_000,

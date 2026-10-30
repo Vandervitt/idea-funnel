@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../api';
+import { api, ApiError, notifyAuthChange } from '../api';
 import { BrandMark, btn, input } from '../components/ui';
 
 export function LoginPage() {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
@@ -18,13 +19,14 @@ export function LoginPage() {
     setBusy(true);
     setError('');
     try {
-      await api('/auth/login', { body: { password, remember } });
+      await api('/auth/login', { body: { username: username.trim(), password, remember } });
       qc.clear();
+      notifyAuthChange();
       const next = params.get('next');
       navigate(next?.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError(`密码不对，还可以试 ${err.body.attemptsLeft} 次。连续错 5 次会锁定 15 分钟。`);
+        setError(`用户名或密码不对，还可以试 ${err.body.attemptsLeft} 次。连续错 5 次会锁定 15 分钟。`);
       } else if (err instanceof ApiError && err.status === 429) {
         setError(err.message);
       } else {
@@ -43,10 +45,16 @@ export function LoginPage() {
       </div>
       <form onSubmit={submit} aria-labelledby="login-title"
         className="w-full max-w-[380px] flex flex-col gap-4 p-7 rounded-2xl bg-surface border border-line shadow-[0_24px_48px_-32px_rgb(0_0_0/0.3)]">
-        <h1 id="login-title" className="text-lg font-bold">输入密码继续</h1>
+        <h1 id="login-title" className="text-lg font-bold">登录账号</h1>
+        <label className="flex flex-col gap-1.5 text-ink-2">
+          用户名
+          <input type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus required
+            maxLength={32} value={username} onChange={(e) => setUsername(e.target.value)} aria-invalid={!!error}
+            className={`${input} h-11 ${error ? '!border-danger' : ''}`} />
+        </label>
         <label className="flex flex-col gap-1.5 text-ink-2">
           密码
-          <input type="password" autoComplete="current-password" autoFocus required value={password}
+          <input type="password" autoComplete="current-password" required maxLength={200} value={password}
             onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error}
             className={`${input} h-11 ${error ? '!border-danger' : ''}`} />
         </label>
@@ -55,9 +63,9 @@ export function LoginPage() {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="size-4" />
           30 天内记住我
         </label>
-        <button type="submit" className={`${btn.primary} min-h-11`} disabled={busy || !password}>{busy ? '登录中…' : '登录'}</button>
+        <button type="submit" className={`${btn.primary} min-h-11`} disabled={busy || !username.trim() || !password}>{busy ? '登录中…' : '登录'}</button>
       </form>
-      <p className="text-[13px] text-muted">个人实例 · 只有你能访问</p>
+      <p className="text-[13px] text-muted">每个账号拥有独立的灵感空间 · 请联系管理员创建账号</p>
     </div>
   );
 }

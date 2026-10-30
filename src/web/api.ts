@@ -13,6 +13,16 @@ export class ApiError extends Error {
 }
 
 export const UNAUTHORIZED_EVENT = 'idea-funnel:unauthorized';
+export const AUTH_CHANGE_KEY = 'idea-funnel:auth-change';
+
+/** Cookies are shared between tabs; notify other tabs to discard the previous user's state. */
+export function notifyAuthChange() {
+  try {
+    localStorage.setItem(AUTH_CHANGE_KEY, crypto.randomUUID());
+  } catch {
+    // A blocked storage API must not turn a successful authentication action into a failure.
+  }
+}
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -44,6 +54,29 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 10_000, retry: (n, err) => !(err instanceof ApiError && err.status < 500) && n < 2 },
   },
+});
+
+export interface CurrentUser {
+  id: string;
+  username: string;
+  role: 'admin' | 'user';
+}
+
+export interface Account extends CurrentUser {
+  createdAt: string;
+}
+
+export const useMe = () => useQuery({
+  queryKey: ['me'], queryFn: () => api<CurrentUser>('/me'), retry: false, staleTime: Infinity,
+});
+
+export const useAccounts = () => useInfiniteQuery({
+  queryKey: ['accounts'],
+  initialPageParam: null as string | null,
+  queryFn: ({ pageParam }) => api<{ items: Account[]; nextCursor: string | null }>(
+    `/admin/users${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ''}`,
+  ),
+  getNextPageParam: (last) => last.nextCursor,
 });
 
 export interface BoardFilter {

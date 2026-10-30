@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { api, ApiError, downloadExport, useDeleteTag, useImport, useRenameTag, useTags } from '../api';
+import { ApiError, downloadExport, useDeleteTag, useImport, useRenameTag, useTags } from '../api';
+import { AccountSettings } from '../components/AccountSettings';
 import { parseBatch } from '../../shared/capture';
 import type { ImportResult } from '../../shared/types';
 import { Dialog, TagChip, btn, input, useToast } from '../components/ui';
@@ -12,11 +11,10 @@ const PREVIEW_ROWS = 50;
 const summary = (r: ImportResult) => `新增 ${r.inserted} 条${r.skipped ? `，跳过 ${r.skipped} 条（库里已有）` : ''}`;
 
 export function SettingsPage() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
   return (
     <div className="flex flex-col gap-5 max-w-[640px]">
       <h1 className="page-title">设置</h1>
+      <AccountSettings />
       <section aria-labelledby="export-title" className={section}>
         <h2 id="export-title" className="font-bold">导出</h2>
         <p className="text-muted">JSON 包含全部想法、标签和时间线，可以原样导回；Markdown 方便阅读和归档。</p>
@@ -25,18 +23,6 @@ export function SettingsPage() {
       <JsonImport />
       <BatchImport />
       <TagManager />
-      <section className={section}>
-        <h2 className="font-bold">修改密码</h2>
-        <p className="text-muted">
-          密码保存在部署平台的环境变量 <code className="font-mono">PASSWORD_HASH</code> 中。在本地运行
-          <code className="font-mono"> npm run hash-password </code>生成新的哈希，更新环境变量后重新部署即可。
-        </p>
-      </section>
-      <button type="button" className={`${btn.secondary} self-start`} onClick={async () => {
-        await api('/auth/logout', { method: 'POST' });
-        qc.clear();
-        navigate('/login', { replace: true });
-      }}>退出登录</button>
     </div>
   );
 }
